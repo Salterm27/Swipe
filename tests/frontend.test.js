@@ -15,7 +15,7 @@ const path = require('node:path');
 const { JSDOM } = require('jsdom');
 
 const BOOT_MARKER = '/* ============================================================ boot */';
-const EXPORTS = ['h', 'safeUrl', 'cardModel', 'dragChoice', 'choicesOf', 'plural', 'renderCard',
+const EXPORTS = ['h', 'safeUrl', 'cardModel', 'dragChoice', 'dragLean', 'swipeThresholds', 'SWIPE', 'choicesOf', 'plural', 'renderCard',
   'statsBar', 'choiceChip', 'choiceEditor', 'mappingEditor', 'setStamps', 'DEFAULT_CHOICES',
   'PROJECT_ID'];
 
@@ -74,14 +74,29 @@ describe('pure helpers', () => {
     assert.deepEqual(app.cardModel({ a: '1' }, { details: ['missing'] }).details, []);
   });
 
-  test('dragChoice needs the threshold and prefers the dominant axis for up', () => {
-    assert.equal(app.dragChoice(30, 0), null);
-    assert.equal(app.dragChoice(120, 0), 'right');
-    assert.equal(app.dragChoice(-120, 40), 'left');
-    assert.equal(app.dragChoice(20, -150), 'unsure');
-    assert.equal(app.dragChoice(150, -120), 'right');   // mostly sideways
-    assert.equal(app.dragChoice(0, 150), null);          // down is not a choice
-    assert.equal(app.dragChoice(5, 0, 1), 'right');      // custom threshold (stamp preview)
+  test('thresholds scale with the card, with a floor for small screens', () => {
+    assert.deepEqual(app.swipeThresholds(400, 600), { x: 160, y: 180 });
+    assert.deepEqual(app.swipeThresholds(200, 300), { x: 110, y: 130 });
+  });
+
+  test('dragChoice needs the full threshold in a clear direction', () => {
+    const th = { x: 160, y: 180 };
+    assert.equal(app.dragChoice(90, 0, th), null);        // the old 90px commit point
+    assert.equal(app.dragChoice(159, 0, th), null);
+    assert.equal(app.dragChoice(160, 0, th), 'right');
+    assert.equal(app.dragChoice(-170, 40, th), 'left');
+    assert.equal(app.dragChoice(170, -175, th), null);    // diagonal: neither
+    assert.equal(app.dragChoice(170, 190, th), null);     // mostly down: nothing
+    assert.equal(app.dragChoice(30, -200, th), 'unsure');
+    assert.equal(app.dragChoice(100, -200, th), null);    // up, but drifting too far sideways
+    assert.equal(app.dragChoice(0, 300, th), null);       // down is not a choice
+  });
+
+  test('dragLean reports direction and progress for the stamps', () => {
+    const th = { x: 100, y: 100 };
+    assert.deepEqual(app.dragLean(50, 0, th), { choice: 'right', progress: 0.5 });
+    assert.deepEqual(app.dragLean(0, -150, th), { choice: 'unsure', progress: 1.5 });
+    assert.deepEqual(app.dragLean(5, 5, th), { choice: null, progress: 0 });
   });
 
   test('choicesOf fills in defaults', () => {
@@ -185,10 +200,15 @@ describe('renderCard', () => {
     const right = card.querySelector('[data-stamp=right]');
     assert.equal(right.textContent, '❤️ Keep');
     assert.equal(right.style.getPropertyValue('--c'), '#ff0000');
-    app.setStamps(card, 45, 0);                       // halfway to the threshold
-    assert.equal(Number(right.style.opacity), 0.5);
+    const th = { x: 100, y: 100 };
+    app.setStamps(card, 50, 0, th);                   // halfway: faint, not armed
+    assert.equal(Number(right.style.opacity), 0.25);
+    assert.equal(right.classList.contains('armed'), false);
     assert.equal(Number(card.querySelector('[data-stamp=left]').style.opacity), 0);
-    app.setStamps(card, 0, -500);
+    app.setStamps(card, 100, 0, th);                  // release here would commit
+    assert.equal(Number(right.style.opacity), 1);
+    assert.equal(right.classList.contains('armed'), true);
+    app.setStamps(card, 0, -500, th);
     assert.equal(Number(card.querySelector('[data-stamp=unsure]').style.opacity), 1);
     assert.equal(Number(right.style.opacity), 0);
   });

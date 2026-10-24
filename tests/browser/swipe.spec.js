@@ -60,24 +60,33 @@ test('deck: buttons, keyboard, undo, then the results page', async ({ page, requ
   await expect(page.locator('[data-tile=left] .n')).toHaveText('1');
 });
 
-test('deck: dragging a card past the threshold decides it, short drags snap back', async ({ page, request }) => {
+test('deck: only a long, clear drag decides; nudges and diagonals snap back', async ({ page, request }) => {
   const pid = await createViaApi(request, 'Drag', 'One\nTwo\nThree');
   await page.goto(`/#/p/${pid}`);
   await expect(topTitle(page)).toHaveText('One');
   const box = await page.locator('.card[data-item]').boundingBox();
   const cx = box.x + box.width / 2, cy = box.y + box.height / 2;
+  const drag = async (dx, dy) => {
+    await page.mouse.move(cx, cy);
+    await page.mouse.down();
+    await page.mouse.move(cx + dx, cy + dy, { steps: 8 });
+    await page.mouse.up();
+  };
 
-  // short drag: nothing happens
-  await page.mouse.move(cx, cy);
-  await page.mouse.down();
-  await page.mouse.move(cx + 30, cy, { steps: 4 });
-  await page.mouse.up();
+  await drag(90, 0);                                   // used to commit: now a nudge
+  await expect(topTitle(page)).toHaveText('One');
+  await drag(box.width * 0.45, -box.width * 0.45);     // diagonal: neither way
+  await expect(topTitle(page)).toHaveText('One');
+  await drag(box.width * 0.3, 0);                      // most of the way, then let go
   await expect(topTitle(page)).toHaveText('One');
 
-  // long drag right
+  // the stamp only arms once a release would count
   await page.mouse.move(cx, cy);
   await page.mouse.down();
-  await page.mouse.move(cx + 200, cy + 10, { steps: 8 });
+  await page.mouse.move(cx + box.width * 0.2, cy, { steps: 6 });
+  await expect(page.locator('.card[data-item] [data-stamp=right]')).not.toHaveClass(/armed/);
+  await page.mouse.move(cx + box.width * 0.5, cy + 10, { steps: 6 });
+  await expect(page.locator('.card[data-item] [data-stamp=right]')).toHaveClass(/armed/);
   await page.mouse.up();
   await expect(topTitle(page)).toHaveText('Two');
 

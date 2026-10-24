@@ -139,6 +139,8 @@
   .card .media { flex: 0 0 auto; height: 46%; background: var(--panel2); }
   .card .media img { width: 100%; height: 100%; object-fit: cover; display: block; pointer-events: none; }
   .card .body { padding: 16px 18px; overflow-y: auto; flex: 1; display: flex; flex-direction: column; gap: 8px; }
+  /* long text: vertical drags scroll it instead of swiping the card up */
+  .card .body.scrolls { touch-action: pan-y; }
   .card .title { font-size: 22px; font-weight: 700; line-height: 1.2; overflow-wrap: anywhere; }
   .card .subtitle { color: var(--accent); font-weight: 600; font-size: 15px; overflow-wrap: anywhere; }
   .card .desc { color: #c5cad6; font-size: 15px; white-space: pre-line; overflow-wrap: anywhere; }
@@ -157,6 +159,8 @@
   .stamp.right { left: 20px; transform: rotate(-12deg); }
   .stamp.left { right: 20px; transform: rotate(12deg); }
   .stamp.unsure { left: 50%; top: auto; bottom: 40px; transform: translateX(-50%); }
+  .stamp { transition: opacity .08s; }
+  .stamp.armed { box-shadow: 0 0 0 3px color-mix(in srgb, var(--c) 35%, transparent); }
   .controls { display: flex; justify-content: center; align-items: center; gap: 18px; padding-top: 14px; }
   .cbtn {
     width: 64px; height: 64px; border-radius: 50%; border: 2px solid var(--c);
@@ -229,7 +233,9 @@ const SLOTS = [
   ['title', 'Title'], ['subtitle', 'Subtitle'], ['image', 'Image'],
   ['description', 'Description'], ['link', 'Link'],
 ];
-const SWIPE_THRESHOLD = 90;   // px of drag that commits a decision
+// How far a drag must go to commit, as a share of the card (with a floor for
+// small screens). Generous on purpose: a mis-swipe costs more than a long one.
+const SWIPE = { fracX: 0.4, minX: 110, fracY: 0.3, minY: 130, deadZone: 12 };
 const PROJECT_ID = /^[0-9a-f]{12}$/;   // same shape app.py generates
 
 /** Tiny hyperscript: h('div', {class: 'x', onclick}, child, 'text'). Text is
@@ -289,12 +295,24 @@ function cardModel(data, mapping) {
   };
 }
 
-/** Which way a drag points once it's past the threshold (or null). */
-function dragChoice(dx, dy, threshold = SWIPE_THRESHOLD) {
-  if (-dy > threshold && Math.abs(dy) > Math.abs(dx)) return 'unsure';
-  if (dx > threshold) return 'right';
-  if (dx < -threshold) return 'left';
-  return null;
+/** Commit distances for a card of this size. */
+function swipeThresholds(width, height) {
+  return { x: Math.max(SWIPE.minX, width * SWIPE.fracX), y: Math.max(SWIPE.minY, height * SWIPE.fracY) };
+}
+
+/** Where a drag is heading and how far along it is (1 = would commit).
+ *  Sideways must beat vertical; up must be clearly up (twice the sideways
+ *  drift), so diagonal wobbles don't count as either. */
+function dragLean(dx, dy, th = swipeThresholds(0, 0)) {
+  if (dy < 0 && -dy > 2 * Math.abs(dx)) return { choice: 'unsure', progress: -dy / th.y };
+  if (Math.abs(dx) > Math.abs(dy)) return { choice: dx > 0 ? 'right' : 'left', progress: Math.abs(dx) / th.x };
+  return { choice: null, progress: 0 };
+}
+
+/** The decision a drag released here makes (or null). */
+function dragChoice(dx, dy, th) {
+  const lean = dragLean(dx, dy, th);
+  return lean.progress >= 1 ? lean.choice : null;
 }
 
 function plural(n, word) { return `${n} ${word}${n === 1 ? '' : 's'}`; }
@@ -669,13 +687,18 @@ function drawDeck() {
   top.dataset.item = deck.queue[0].id;
   attachDrag(top);
   box.insertBefore(top, box.querySelector('.flying'));
+  const body = top.querySelector('.body');
+  body.classList.toggle('scrolls', body.scrollHeight > body.clientHeight + 1);
 }
 
-function setStamps(card, dx, dy) {
-  const want = dragChoice(dx, dy, 1);
-  const strength = Math.min(1, Math.max(Math.abs(dx), -dy) / SWIPE_THRESHOLD);
+/** Stamps fade in up to half while dragging and snap to full only once
+ *  letting go would commit — so you can see when a release counts. */
+function setStamps(card, dx, dy, th) {
+  const { choice, progress } = dragLean(dx, dy, th);
   card.querySelectorAll('[data-stamp]').forEach(s => {
-    s.style.opacity = s.dataset.stamp === want ? strength : 0;
+    const on = s.dataset.stamp === choice;
+    s.style.opacity = !on ? 0 : progress >= 1 ? 1 : Math.min(progress, 1) * 0.5;
+    s.classList.toggle('armed', on && progress >= 1);
   });
 }
 
@@ -683,29 +706,40 @@ function attachDrag(card) {
   let start = null;
   card.addEventListener('pointerdown', e => {
     if (e.button !== 0 || deck.busy) return;
-    start = { x: e.clientX, y: e.clientY, id: e.pointerId };
+    const r = card.getBoundingClientRect();
+    start = { x: e.clientX, y: e.clientY, id: e.pointerId, moved: false, th: swipeThresholds(r.width, r.height) };
     card.setPointerCapture(e.pointerId);
-    card.classList.add('dragging');
   });
   card.addEventListener('pointermove', e => {
     if (!start || e.pointerId !== start.id) return;
     const dx = e.clientX - start.x, dy = e.clientY - start.y;
+    // a dead zone, so a tap or a resting thumb doesn't nudge the card
+    if (!start.moved && Math.hypot(dx, dy) < SWIPE.deadZone) return;
+    start.moved = true;
+    card.classList.add('dragging');
     card.style.transform = `translate(${dx}px, ${dy}px) rotate(${dx / 18}deg)`;
-    setStamps(card, dx, dy);
+    setStamps(card, dx, dy, start.th);
   });
-  const end = e => {
-    if (!start || e.pointerId !== start.id) return;
-    const dx = e.clientX - start.x, dy = e.clientY - start.y;
-    start = null;
+  const snapBack = () => {
     card.classList.remove('dragging');
-    const c = dragChoice(dx, dy);
-    if (c) { decide(c, { dx, dy }); return; }
     card.classList.add('settle');
     card.style.transform = '';
     setStamps(card, 0, 0);
   };
-  card.addEventListener('pointerup', end);
-  card.addEventListener('pointercancel', end);
+  card.addEventListener('pointerup', e => {
+    if (!start || e.pointerId !== start.id) return;
+    const dx = e.clientX - start.x, dy = e.clientY - start.y, th = start.th;
+    start = null;
+    card.classList.remove('dragging');
+    const c = dragChoice(dx, dy, th);
+    if (c) decide(c, { dx, dy }); else snapBack();
+  });
+  // the browser took the gesture over (e.g. scrolling the text): never a decision
+  card.addEventListener('pointercancel', e => {
+    if (!start || e.pointerId !== start.id) return;
+    start = null;
+    snapBack();
+  });
 }
 
 function flyOut(card, choice, from) {
@@ -714,7 +748,7 @@ function flyOut(card, choice, from) {
   const w = window.innerWidth;
   const to = choice === 'unsure' ? { x: (from && from.dx) || 0, y: -window.innerHeight }
                                  : { x: choice === 'right' ? w * 1.2 : -w * 1.2, y: (from && from.dy) || 0 };
-  setStamps(card, choice === 'unsure' ? 0 : to.x, choice === 'unsure' ? -999 : 0);
+  setStamps(card, choice === 'unsure' ? 0 : to.x, choice === 'unsure' ? -w * 9 : 0, swipeThresholds(1, 1));
   card.classList.add('settle');
   card.style.transform = `translate(${to.x}px, ${to.y}px) rotate(${to.x / 18}deg)`;
   card.style.opacity = '0';
