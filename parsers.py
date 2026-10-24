@@ -280,19 +280,21 @@ def _try(fmt, text):
     return recs or None
 
 
-def parse(text, fmt=None, filename=None):
-    """Return {"format", "records", "fields", "truncated"}.
+def read(text, fmt=None, filename=None):
+    """Return (result, None) or (None, "what went wrong, for the user").
 
-    `fmt` forces a format (the user picked one); otherwise a filename
-    extension is tried first, then auto-detection. Raises ValueError if
-    the text yields nothing at all.
+    result is {"format", "records", "fields", "truncated"}. `fmt` forces a
+    format (the user picked one); otherwise a filename extension is tried
+    first, then auto-detection. Errors are returned, not raised, so the
+    message a user sees is always one written here — never the text of
+    some unexpected internal exception.
     """
-    text = (text or "").lstrip("﻿")
+    text = (text or "").lstrip("\ufeff")
     if not text.strip():
-        raise ValueError("the list is empty")
+        return None, "the list is empty"
     if fmt:
         if fmt not in FORMATS:
-            raise ValueError(f"unknown format {fmt!r}")
+            return None, f"unknown format {fmt!r}"
         order = [fmt]
     else:
         order = list(FORMATS)
@@ -312,9 +314,17 @@ def parse(text, fmt=None, filename=None):
             truncated = len(recs) > MAX_RECORDS
             recs = recs[:MAX_RECORDS]
             return {"format": f, "records": recs, "fields": field_order(recs),
-                    "truncated": truncated}
-    raise ValueError(f"could not read this as {FORMAT_LABELS[fmt]}" if fmt
-                     else "could not find any items in this text")
+                    "truncated": truncated}, None
+    return None, (f"could not read this as {FORMAT_LABELS[fmt]}" if fmt
+                  else "could not find any items in this text")
+
+
+def parse(text, fmt=None, filename=None):
+    """read(), raising ValueError instead — handier for scripts and tests."""
+    result, error = read(text, fmt, filename)
+    if error:
+        raise ValueError(error)
+    return result
 
 
 def field_order(records):

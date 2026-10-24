@@ -230,6 +230,7 @@ const SLOTS = [
   ['description', 'Description'], ['link', 'Link'],
 ];
 const SWIPE_THRESHOLD = 90;   // px of drag that commits a decision
+const PROJECT_ID = /^[0-9a-f]{12}$/;   // same shape app.py generates
 
 /** Tiny hyperscript: h('div', {class: 'x', onclick}, child, 'text'). Text is
  *  always set as text, never parsed as HTML — list data is user content. */
@@ -937,7 +938,9 @@ async function route() {
   try {
     if (parts[0] === 'new') return viewNew();
     draft = null;
-    if (parts[0] === 'p' && parts[1]) {
+    // ids come from the URL bar and end up in fetch() paths: only accept
+    // the server's own format, so "#/p/..%2F.." can't aim requests elsewhere
+    if (parts[0] === 'p' && PROJECT_ID.test(parts[1] || '')) {
       if (parts[2] === 'summary') return await viewSummary(parts[1], parts[3] ? Number(parts[3]) : null);
       if (parts[2] === 'settings') return await viewSettings(parts[1]);
       return await viewSwipe(parts[1]);

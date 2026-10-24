@@ -16,16 +16,19 @@ const { JSDOM } = require('jsdom');
 
 const BOOT_MARKER = '/* ============================================================ boot */';
 const EXPORTS = ['h', 'safeUrl', 'cardModel', 'dragChoice', 'choicesOf', 'plural', 'renderCard',
-  'statsBar', 'choiceChip', 'choiceEditor', 'mappingEditor', 'setStamps', 'DEFAULT_CHOICES'];
+  'statsBar', 'choiceChip', 'choiceEditor', 'mappingEditor', 'setStamps', 'DEFAULT_CHOICES',
+  'PROJECT_ID'];
 
 function loadApp() {
   const html = fs.readFileSync(path.join(__dirname, '..', 'static', 'index.html'), 'utf8');
-  const m = html.match(/<script>([\s\S]*)<\/script>/);
-  assert.ok(m, 'could not find the <script> block in index.html');
-  const cut = m[1].indexOf(BOOT_MARKER);
+  const dom = new JSDOM(html, { runScripts: 'outside-only', url: 'http://swipe.test/' });
+  const script = dom.window.document.querySelector('script:not([src])');
+  assert.ok(script, 'could not find the inline <script> in index.html');
+  const source = script.textContent;
+  script.remove();   // the page markup stays, the app code is run below
+  const cut = source.indexOf(BOOT_MARKER);
   assert.notEqual(cut, -1, 'boot marker not found in index.html — update BOOT_MARKER in this harness');
-  const dom = new JSDOM(html.replace(m[0], ''), { runScripts: 'outside-only', url: 'http://swipe.test/' });
-  dom.window.eval(`${m[1].slice(0, cut)};window.__app = { ${EXPORTS.join(', ')} };`);
+  dom.window.eval(`${source.slice(0, cut)};window.__app = { ${EXPORTS.join(', ')} };`);
   return { app: dom.window.__app, window: dom.window, document: dom.window.document };
 }
 
@@ -86,6 +89,13 @@ describe('pure helpers', () => {
     assert.equal(c.right.label, 'Keep');
     assert.equal(c.left.label, 'No');
     assert.equal(app.choicesOf(null).unsure.icon, '?');
+  });
+
+  test('PROJECT_ID only accepts the server id shape', () => {
+    assert.ok(app.PROJECT_ID.test('3f9a0c1b2d4e'));
+    for (const bad of ['..%2F..%2Fapi', '3F9A0C1B2D4E', '3f9a0c1b2d4', '3f9a0c1b2d4e0', '', '3f9a0c1b2d4e/../x']) {
+      assert.ok(!app.PROJECT_ID.test(bad), bad);
+    }
   });
 
   test('plural', () => {

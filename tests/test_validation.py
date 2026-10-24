@@ -57,3 +57,18 @@ def test_wrong_method_is_json(client):
 def test_empty_body_is_treated_as_empty_object(client, pid):
     assert client.post("/api/projects", data="").status_code == 400          # name required
     assert client.post(f"/api/projects/{pid}/rounds", data="").status_code == 400  # empty round
+
+
+def test_internal_errors_never_leak_their_message(client, monkeypatch):
+    import app as swipe
+
+    def boom(*_a, **_k):
+        raise ValueError("secret internal detail")
+    monkeypatch.setattr(swipe.parsers, "guess_mapping", boom)
+    swipe.app.config["PROPAGATE_EXCEPTIONS"] = False
+    try:
+        r = client.post("/api/projects", json={"name": "x", "text": "a\nb"})
+    finally:
+        swipe.app.config["PROPAGATE_EXCEPTIONS"] = None
+    assert r.status_code == 500
+    assert b"secret" not in r.data

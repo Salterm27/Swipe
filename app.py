@@ -231,45 +231,49 @@ def merge_fields(old, records):
     return list(seen)
 
 
+# Validators return (value, None) or (None, message). They don't raise:
+# what reaches the client is always a message written here, never the text
+# of an exception (CodeQL py/stack-trace-exposure).
+
 def clean_choices(raw):
     out = {}
     raw = raw or {}
     if not isinstance(raw, dict):
-        raise ValueError("choices must be an object")
+        return None, "choices must be an object"
     for c in CHOICES:
         d, given = DEFAULT_CHOICES[c], raw.get(c) or {}
         if not isinstance(given, dict):
-            raise ValueError(f"choices.{c} must be an object")
+            return None, f"choices.{c} must be an object"
         color = str(given.get("color") or d["color"]).strip()
         if not re.match(r"^#[0-9a-fA-F]{6}$", color):
-            raise ValueError(f"{c}: color must look like #3ecf8e")
+            return None, f"{c}: color must look like #3ecf8e"
         out[c] = {
             "label": (str(given.get("label") or "").strip() or d["label"])[:40],
             "icon": (str(given.get("icon") or "").strip() or d["icon"])[:8],
             "color": color.lower(),
         }
-    return out
+    return out, None
 
 
 def clean_mapping(raw, fields):
     raw = raw or {}
     if not isinstance(raw, dict) or not isinstance(raw.get("details") or [], list):
-        raise ValueError("mapping must be an object with a details list")
+        return None, "mapping must be an object with a details list"
     out = {}
     for slot in parsers.SLOTS:
         f = raw.get(slot)
         out[slot] = f if f in fields else None
     out["details"] = [f for f in (raw.get("details") or []) if f in fields]
-    return out
+    return out, None
 
 
 def parse_body(data):
     text, fmt, filename = data.get("text", ""), data.get("format") or None, data.get("filename")
     if not isinstance(text, str):
-        raise ValueError("text must be a string")
+        return None, "text must be a string"
     if not isinstance(fmt, (str, type(None))) or not isinstance(filename, (str, type(None))):
-        raise ValueError("format and filename must be strings")
-    return parsers.parse(text, fmt=fmt, filename=filename)
+        return None, "format and filename must be strings"
+    return parsers.read(text, fmt=fmt, filename=filename)
 
 
 def item_dict(row, history=None, choice=None):
@@ -319,10 +323,9 @@ def parse_preview():
     """Stateless dry run: what Swipe makes of this text, plus a guessed card
     layout. Nothing is stored until POST /api/projects."""
     data = json_body()
-    try:
-        res = parse_body(data)
-    except ValueError as e:
-        return err(str(e))
+    res, problem = parse_body(data)
+    if problem:
+        return err(problem)
     recs = res["records"]
     mapping = parsers.guess_mapping(recs, res["fields"])
     return jsonify(
@@ -353,14 +356,17 @@ def create_project():
     name = str(data.get("name", "")).strip()[:120]
     if not name:
         return err("name is required")
-    try:
-        choices = clean_choices(data.get("choices"))
-        res = parse_body(data)
-        fields = res["fields"]
-        guess = parsers.guess_mapping(res["records"], fields)
-        mapping = clean_mapping(data.get("mapping") or guess, fields)
-    except ValueError as e:
-        return err(str(e))
+    choices, problem = clean_choices(data.get("choices"))
+    if problem:
+        return err(problem)
+    res, problem = parse_body(data)
+    if problem:
+        return err(problem)
+    fields = res["fields"]
+    guess = parsers.guess_mapping(res["records"], fields)
+    mapping, problem = clean_mapping(data.get("mapping") or guess, fields)
+    if problem:
+        return err(problem)
     # key_field: absent → use the guess; null → match on the whole record
     key_field = data["key_field"] if "key_field" in data else guess["key"]
     if key_field not in fields:
@@ -402,15 +408,13 @@ def update_project(pid):
             return err("name can't be empty")
         updates["name"] = name
     if "choices" in data:
-        try:
-            updates["choices"] = clean_choices(data["choices"])
-        except ValueError as e:
-            return err(str(e))
+        updates["choices"], problem = clean_choices(data["choices"])
+        if problem:
+            return err(problem)
     if "mapping" in data:
-        try:
-            updates["mapping"] = clean_mapping(data["mapping"], meta.get("fields", []))
-        except ValueError as e:
-            return err(str(e))
+        updates["mapping"], problem = clean_mapping(data["mapping"], meta.get("fields", []))
+        if problem:
+            return err(problem)
     with con:
         set_meta(con, **updates)
     return jsonify(project_summary(pid, con))
@@ -517,10 +521,9 @@ def import_more(pid):
     ones gain the new fields; the rest are added to the deck."""
     con = open_project(pid)
     data = json_body()
-    try:
-        res = parse_body(data)
-    except ValueError as e:
-        return err(str(e))
+    res, problem = parse_body(data)
+    if problem:
+        return err(problem)
     meta = get_meta(con)
     rnd = current_round(con)
     with con:
@@ -541,10 +544,9 @@ def next_round(pid):
         return err("carry must be a list of left/right/unsure/none")
     res = None
     if str(data.get("text", "")).strip():
-        try:
-            res = parse_body(data)
-        except ValueError as e:
-            return err(str(e))
+        res, problem = parse_body(data)
+        if problem:
+            return err(problem)
     meta = get_meta(con)
     prev = current_round(con)
     added = updated = 0
