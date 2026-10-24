@@ -40,9 +40,10 @@ def test_custom_choices_and_validation(client):
 
 
 def test_explicit_mapping_drops_unknown_fields(client):
-    p = make(client, mapping={"title": "price", "subtitle": "nope", "details": ["name", "ghost"]})
+    p = make(client, mapping={"title": "price", "subtitle": "nope", "image": "id", "gallery": ["name", "ghost", "id"]})
     assert p["mapping"]["title"] == "price" and p["mapping"]["subtitle"] is None
-    assert p["mapping"]["details"] == ["name"]
+    assert p["mapping"]["gallery"] == ["name"]   # unknown dropped, and the main image isn't repeated
+    assert p["mapping"]["highlight"] is None
 
 
 def test_projects_listing_ignores_backup_snapshots(client):

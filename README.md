@@ -25,11 +25,18 @@ Phone browser ──► Pi :8002  (Flask)
    the three choices (right, left, up for "don't know") gets a label, an icon
    and a colour. The defaults are ✓ green *Yes*, ✕ red *No*, and ? grey *Not sure*.
 2. **Add your list.** Paste it or load a file. Swipe detects the format (see below).
-3. **Lay out the card.** Swipe makes an educated guess about which field goes
-   in the title, subtitle, image, description and link, and which other fields to show.
-   You see a real sample card and can change any slot. You can step through
-   samples and override the detected format.
-4. **Swipe.** Drag the card, tap the buttons, or use the keyboard (← → ↑, ⌫ undo).
+3. **Lay out the card.** Swipe makes an educated guess about the card face:
+   **title**, **subtitle**, a **highlight** next to the title (price, year,
+   rating…), the **main photo**, plus **more photos** if the list has several
+   photo fields or a field with several URLs. It also picks the description
+   and link. You see a real sample card and can change any slot; tap it to
+   preview its details.
+4. **Swipe.** The card face shows only the essentials, Tinder-style. Drag it,
+   tap the buttons, or use the keyboard (← → ↑, ⌫ undo). **Tap** the card (or
+   ⓘ, or press Enter) to open its details: the photos large on top, then the
+   description, every other field and the link. You can decide right from
+   there. With several photos, tap the left or right edge of the photo to
+   step through them. Close with ⌄, Esc, the back gesture or a pull-down.
 5. **Results.** Each pile shows a count. You can filter by pile and change any
    decision with one tap. Export to CSV or JSON, or export only one pile.
 6. **Next round.** Choose which piles go back into the deck (default:

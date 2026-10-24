@@ -18,7 +18,7 @@ def pid(client):
     ("post", "/api/projects", {"name": "x", "text": "a", "choices": "red"}),
     ("post", "/api/projects", {"name": "x", "text": "a", "choices": {"left": "x"}}),
     ("post", "/api/projects", {"name": "x", "text": "a", "mapping": "title"}),
-    ("post", "/api/projects", {"name": "x", "text": "a", "mapping": {"details": "name"}}),
+    ("post", "/api/projects", {"name": "x", "text": "a", "mapping": {"gallery": "name"}}),
     ("patch", "/api/projects/{pid}", {"mapping": ["a"]}),
     ("patch", "/api/projects/{pid}", {"choices": {"right": {"color": "green"}}}),
     ("patch", "/api/projects/{pid}", "just a string"),

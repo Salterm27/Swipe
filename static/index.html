@@ -112,13 +112,13 @@
   /* mapping */
   .mapgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 0 12px; }
   @media (max-width: 520px) { .mapgrid { grid-template-columns: 1fr; } }
-  .details-pick { display: flex; flex-wrap: wrap; gap: 6px; }
-  .details-pick label {
+  .gallery-pick { display: flex; flex-wrap: wrap; gap: 6px; }
+  .gallery-pick label {
     display: inline-flex; gap: 5px; align-items: center; background: var(--panel2);
     padding: 5px 10px; border-radius: 20px; font-size: 13.5px; cursor: pointer;
   }
   .preview-wrap { display: flex; flex-direction: column; align-items: center; gap: 10px; margin: 8px 0 4px; }
-  .preview-wrap .card { position: relative; width: min(100%, 360px); min-height: 200px; max-height: 480px; cursor: default; }
+  .preview-wrap .card { position: relative; width: min(100%, 340px); height: 440px; cursor: pointer; }
 
   /* deck */
   /* viewport minus header (~58px) and main's own 16px top/bottom padding */
@@ -136,18 +136,64 @@
   .card.dragging { cursor: grabbing; transition: none; }
   .card.settle { transition: transform .25s ease, opacity .25s ease; }
   .card.flying { z-index: 5; pointer-events: none; }
-  .card .media { flex: 0 0 auto; height: 46%; background: var(--panel2); }
-  .card .media img { width: 100%; height: 100%; object-fit: cover; display: block; pointer-events: none; }
-  .card .body { padding: 16px 18px; overflow-y: auto; flex: 1; display: flex; flex-direction: column; gap: 8px; }
-  .card .title { font-size: 22px; font-weight: 700; line-height: 1.2; overflow-wrap: anywhere; }
-  .card .subtitle { color: var(--accent); font-weight: 600; font-size: 15px; overflow-wrap: anywhere; }
-  .card .desc { color: #c5cad6; font-size: 15px; white-space: pre-line; overflow-wrap: anywhere; }
-  .card .link { font-size: 14px; color: #7aa7ff; overflow-wrap: anywhere; }
-  .card dl { display: grid; grid-template-columns: auto 1fr; gap: 3px 12px; font-size: 13.5px; margin-top: 4px; }
-  .card dt { color: var(--muted); }
-  .card dd { overflow-wrap: anywhere; }
-  .card .hist { display: flex; gap: 6px; flex-wrap: wrap; }
-  .card .placeholder { color: var(--muted); font-style: italic; }
+  /* the face: photo fills the card, the essentials sit on a fade at the bottom */
+  .card .media { position: absolute; inset: 0; background: var(--panel2); }
+  .media img { width: 100%; height: 100%; object-fit: cover; display: block; pointer-events: none; }
+  .bars { position: absolute; top: 8px; left: 10px; right: 10px; display: flex; gap: 4px; z-index: 2; pointer-events: none; }
+  .bars i { flex: 1; height: 3px; border-radius: 2px; background: rgba(255,255,255,.35); }
+  .bars i.on { background: #fff; }
+  .card .top { position: absolute; top: 20px; left: 12px; right: 12px; z-index: 2; pointer-events: none; }
+  .hist { display: flex; gap: 6px; flex-wrap: wrap; }
+  .card .face {
+    position: relative; z-index: 1; margin-top: auto; padding: 90px 64px 20px 18px; color: #fff;
+    background: linear-gradient(to bottom, transparent, rgba(8,9,12,.75) 35%, rgba(8,9,12,.94));
+  }
+  .card.text { background: linear-gradient(160deg, #262c3b, var(--panel) 70%); }
+  .card.text .face { margin: auto 0; background: none; padding: 28px 64px 28px 22px; }
+  .title-row { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+  .title { font-size: 26px; font-weight: 800; line-height: 1.15; overflow-wrap: anywhere; }
+  .highlight {
+    font-size: 15px; font-weight: 700; padding: 2px 10px; border-radius: 20px; white-space: nowrap;
+    background: rgba(255,255,255,.16); max-width: 100%; overflow: hidden; text-overflow: ellipsis;
+  }
+  .subtitle { color: var(--accent); font-weight: 600; font-size: 15.5px; margin-top: 4px; overflow-wrap: anywhere; }
+  .desc { color: #c5cad6; font-size: 15px; white-space: pre-line; overflow-wrap: anywhere; }
+  .card .face .desc {
+    margin-top: 10px; display: -webkit-box; -webkit-line-clamp: 6; -webkit-box-orient: vertical; overflow: hidden;
+  }
+  .card.photo .face .desc { display: none; }
+  .info {
+    position: absolute; z-index: 3; right: 16px; bottom: 20px; width: 36px; height: 36px; border-radius: 50%;
+    border: 1.5px solid rgba(255,255,255,.75); background: rgba(0,0,0,.3); color: #fff; cursor: pointer;
+    font: italic 700 17px Georgia, serif;
+  }
+
+  /* details sheet: big photo on top, everything else scrolls below it */
+  body.sheet-open { overflow: hidden; }
+  .sheet {
+    position: fixed; inset: 0; z-index: 40; background: var(--bg); display: flex; flex-direction: column;
+    padding-top: env(safe-area-inset-top); animation: sheet-in .18s ease-out;
+  }
+  @keyframes sheet-in { from { transform: translateY(30px); opacity: 0; } }
+  .sheet-scroll { flex: 1; overflow-y: auto; overscroll-behavior: contain; }
+  .gallery { position: relative; height: min(70dvh, 125vw); background: #000; cursor: pointer; }
+  .gallery img { width: 100%; height: 100%; object-fit: contain; display: block; }
+  .gallery .count {
+    position: absolute; right: 12px; bottom: 12px; font-size: 12.5px; padding: 3px 9px;
+    border-radius: 12px; background: rgba(0,0,0,.55); color: #fff;
+  }
+  .sheet-body { padding: 18px 18px 28px; max-width: 720px; margin: 0 auto; display: flex; flex-direction: column; gap: 10px; }
+  .sheet-body .highlight { background: var(--panel2); }
+  .sheet-body .desc { font-size: 16px; line-height: 1.5; }
+  .sheet-body dl { display: grid; grid-template-columns: minmax(80px, auto) 1fr; gap: 8px 14px; font-size: 14.5px;
+                   padding-top: 12px; border-top: 1px solid #232835; }
+  .sheet-body dt { color: var(--muted); }
+  .sheet-body dd { overflow-wrap: anywhere; white-space: pre-line; }
+  .sheet-body .link { color: #7aa7ff; overflow-wrap: anywhere; }
+  .sheet-bar {
+    display: flex; justify-content: center; align-items: center; gap: 18px; background: var(--panel);
+    padding: 12px 12px calc(12px + env(safe-area-inset-bottom)); border-top: 1px solid #262b36;
+  }
   .stamp {
     position: absolute; top: 22px; padding: 6px 14px; border: 3px solid var(--c);
     color: var(--c); border-radius: 10px; font-size: 26px; font-weight: 800;
@@ -157,6 +203,8 @@
   .stamp.right { left: 20px; transform: rotate(-12deg); }
   .stamp.left { right: 20px; transform: rotate(12deg); }
   .stamp.unsure { left: 50%; top: auto; bottom: 40px; transform: translateX(-50%); }
+  .stamp { transition: opacity .08s; }
+  .stamp.armed { box-shadow: 0 0 0 3px color-mix(in srgb, var(--c) 35%, transparent); }
   .controls { display: flex; justify-content: center; align-items: center; gap: 18px; padding-top: 14px; }
   .cbtn {
     width: 64px; height: 64px; border-radius: 50%; border: 2px solid var(--c);
@@ -226,10 +274,12 @@ const DEFAULT_CHOICES = {
 const CHOICE_ORDER = ['left', 'unsure', 'right'];
 const ICON_PICKS = ['✓', '✕', '?', '❤️', '👍', '👎', '⭐', '🔥', '🗑️', '📌', '⏭️', '💤', '🤔', '💰'];
 const SLOTS = [
-  ['title', 'Title'], ['subtitle', 'Subtitle'], ['image', 'Image'],
-  ['description', 'Description'], ['link', 'Link'],
+  ['title', 'Title'], ['subtitle', 'Subtitle'], ['highlight', 'Highlight (next to the title)'],
+  ['image', 'Main photo'], ['description', 'Description'], ['link', 'Link'],
 ];
-const SWIPE_THRESHOLD = 90;   // px of drag that commits a decision
+// How far a drag must go to commit, as a share of the card (with a floor for
+// small screens). Generous on purpose: a mis-swipe costs more than a long one.
+const SWIPE = { fracX: 0.4, minX: 110, fracY: 0.3, minY: 130, deadZone: 12 };
 const PROJECT_ID = /^[0-9a-f]{12}$/;   // same shape app.py generates
 
 /** Tiny hyperscript: h('div', {class: 'x', onclick}, child, 'text'). Text is
@@ -273,28 +323,55 @@ function safeUrl(v, { image = false } = {}) {
 
 function choicesOf(p) { return { ...DEFAULT_CHOICES, ...((p && p.choices) || {}) }; }
 
+/** A field can hold several photos: "a.jpg, b.jpg" or a flattened JSON list. */
+function splitUrls(v) {
+  const s = String(v || '').trim();
+  if (/^data:image\//i.test(s)) return [s];          // data: URIs contain commas
+  return s.split(/[\s,|]+/).filter(Boolean);
+}
+
 /** What a card shows for one record under a mapping — pure, so the wizard
- *  preview and the real deck can't drift apart. */
+ *  preview and the real deck can't drift apart. The face gets the title,
+ *  subtitle, highlight and photos; `details` is every other non-empty field,
+ *  for the details sheet. */
 function cardModel(data, mapping) {
   const get = f => (f && data[f] != null ? String(data[f]).trim() : '');
   const m = mapping || {};
   const title = get(m.title) || Object.values(data).map(String).find(v => v.trim()) || '(empty)';
+  const photoFields = [m.image, ...(m.gallery || [])].filter(Boolean);
+  const images = [...new Set(photoFields.flatMap(f => splitUrls(get(f)))
+    .map(u => safeUrl(u, { image: true })).filter(Boolean))];
+  const shown = new Set([m.title, m.subtitle, m.highlight, m.description, m.link, ...photoFields]);
   return {
     title,
     subtitle: get(m.subtitle),
-    image: safeUrl(get(m.image), { image: true }),
+    highlight: get(m.highlight),
+    images,
+    image: images[0] || null,
     description: get(m.description),
     link: safeUrl(get(m.link)),
-    details: (m.details || []).map(f => [f, get(f)]).filter(([, v]) => v),
+    details: Object.keys(data).filter(f => !shown.has(f)).map(f => [f, get(f)]).filter(([, v]) => v),
   };
 }
 
-/** Which way a drag points once it's past the threshold (or null). */
-function dragChoice(dx, dy, threshold = SWIPE_THRESHOLD) {
-  if (-dy > threshold && Math.abs(dy) > Math.abs(dx)) return 'unsure';
-  if (dx > threshold) return 'right';
-  if (dx < -threshold) return 'left';
-  return null;
+/** Commit distances for a card of this size. */
+function swipeThresholds(width, height) {
+  return { x: Math.max(SWIPE.minX, width * SWIPE.fracX), y: Math.max(SWIPE.minY, height * SWIPE.fracY) };
+}
+
+/** Where a drag is heading and how far along it is (1 = would commit).
+ *  Sideways must beat vertical; up must be clearly up (twice the sideways
+ *  drift), so diagonal wobbles don't count as either. */
+function dragLean(dx, dy, th = swipeThresholds(0, 0)) {
+  if (dy < 0 && -dy > 2 * Math.abs(dx)) return { choice: 'unsure', progress: -dy / th.y };
+  if (Math.abs(dx) > Math.abs(dy)) return { choice: dx > 0 ? 'right' : 'left', progress: Math.abs(dx) / th.x };
+  return { choice: null, progress: 0 };
+}
+
+/** The decision a drag released here makes (or null). */
+function dragChoice(dx, dy, th) {
+  const lean = dragLean(dx, dy, th);
+  return lean.progress >= 1 ? lean.choice : null;
 }
 
 function plural(n, word) { return `${n} ${word}${n === 1 ? '' : 's'}`; }
@@ -331,27 +408,80 @@ function readFile(file) {
 
 /* ============================================================ card */
 
+/** A photo with Tinder-style progress bars; showPhoto() steps through.
+ *  Photos that fail to load are dropped; `onEmpty` runs if none are left. */
+function photoFrame(images, { cls = 'media', onEmpty } = {}) {
+  const img = h('img', { alt: '', referrerPolicy: 'no-referrer', draggable: false });
+  const frame = h('div', { class: cls }, img);
+  frame.images = [...images];
+  frame.index = 0;
+  img.onerror = () => {
+    frame.images.splice(frame.index, 1);
+    if (frame.images.length) showPhoto(frame, frame.index);
+    else if (onEmpty) onEmpty(frame);
+  };
+  showPhoto(frame, 0);
+  return frame;
+}
+
+function showPhoto(frame, i) {
+  const n = frame.images.length;
+  if (!n) return;
+  frame.index = ((i % n) + n) % n;
+  const img = frame.querySelector('img');
+  if (img.getAttribute('src') !== frame.images[frame.index]) img.src = frame.images[frame.index];
+  let bars = frame.querySelector('.bars');
+  if (n < 2) { if (bars) bars.remove(); return; }
+  if (!bars || bars.children.length !== n) {
+    if (bars) bars.remove();
+    bars = h('div', { class: 'bars' }, frame.images.map(() => h('i')));
+    frame.appendChild(bars);
+  }
+  [...bars.children].forEach((b, k) => b.classList.toggle('on', k === frame.index));
+  const count = frame.querySelector('.count');
+  if (count) count.textContent = `${frame.index + 1} / ${n}`;
+}
+
+/** Tap on a photo: left third goes back, right third forward, the middle
+ *  (or a single photo) is "show me more". Returns true if it stepped. */
+function stepPhoto(frame, x, width) {
+  if (!frame || frame.images.length < 2) return false;
+  if (x < width / 3) { showPhoto(frame, frame.index - 1); return true; }
+  if (x > (2 * width) / 3) { showPhoto(frame, frame.index + 1); return true; }
+  return false;
+}
+
+function titleRow(m) {
+  return h('div', { class: 'title-row' },
+    h('div', { class: 'title' }, m.title),
+    m.highlight ? h('span', { class: 'highlight' }, m.highlight) : null);
+}
+
+function historyChips(item, choices) {
+  return item.history && item.history.length
+    ? h('div', { class: 'hist' }, item.history.map(x => choiceChip(choices, x.choice, `R${x.round} `)))
+    : null;
+}
+
+/** The card face: photo, title, highlight, subtitle — the rest waits in the
+ *  details sheet. Without a photo it's a tinted text card that also shows
+ *  the start of the description. */
 function renderCard(item, project, { withStamps = false } = {}) {
   const choices = choicesOf(project);
   const m = cardModel(item.data, project.mapping);
-  const card = h('div', { class: 'card' });
-  if (m.image) {
-    const img = h('img', { src: m.image, alt: '', loading: 'lazy', referrerPolicy: 'no-referrer', draggable: false });
-    img.onerror = () => img.parentNode && img.parentNode.remove();
-    card.appendChild(h('div', { class: 'media' }, img));
+  const card = h('div', { class: `card ${m.images.length ? 'photo' : 'text'}` });
+  if (m.images.length) {
+    card.appendChild(photoFrame(m.images, { onEmpty: frame => {
+      frame.remove();
+      card.classList.replace('photo', 'text');
+    } }));
   }
-  const body = h('div', { class: 'body' },
-    item.history && item.history.length
-      ? h('div', { class: 'hist' }, item.history.map(x => choiceChip(choices, x.choice, `R${x.round} `)))
-      : null,
-    h('div', { class: 'title' }, m.title),
+  card.appendChild(h('div', { class: 'top' }, historyChips(item, choices)));
+  card.appendChild(h('div', { class: 'face' },
+    titleRow(m),
     m.subtitle ? h('div', { class: 'subtitle' }, m.subtitle) : null,
-    m.description ? h('div', { class: 'desc' }, m.description) : null,
-    m.details.length ? h('dl', {}, m.details.map(([k, v]) => [h('dt', {}, k), h('dd', {}, v)])) : null,
-    m.link ? h('a', { class: 'link', href: m.link, target: '_blank', rel: 'noopener noreferrer',
-                      onpointerdown: e => e.stopPropagation() }, m.link) : null,
-  );
-  card.appendChild(body);
+    m.description ? h('div', { class: 'desc' }, m.description) : null));
+  card.appendChild(h('button', { type: 'button', class: 'info', 'data-info': '', title: 'Details', 'aria-label': 'Details' }, 'i'));
   if (withStamps) {
     for (const c of ['left', 'right', 'unsure']) {
       card.appendChild(h('div', { class: `stamp ${c}`, 'data-stamp': c, vars: { '--c': choices[c].color } },
@@ -359,6 +489,81 @@ function renderCard(item, project, { withStamps = false } = {}) {
     }
   }
   return card;
+}
+
+/** A tap (not a drag) on a card: step photos at the edges, otherwise open
+ *  the details. `onDecide` is passed through to the sheet's buttons. */
+function cardTap(card, item, project, { x, target }, onDecide) {
+  const r = card.getBoundingClientRect();
+  if (!(target && target.closest && target.closest('[data-info]'))
+      && stepPhoto(card.querySelector('.media'), x - r.left, r.width)) return;
+  const frame = card.querySelector('.media');
+  openDetail(item, project, { onDecide, photo: frame ? frame.index : 0 });
+}
+
+/** Everything about one item: the photos large, then every field. Choice
+ *  buttons are pinned at the bottom when `onDecide` is given. */
+function renderDetail(item, project, { onDecide, onClose, photo = 0 } = {}) {
+  const choices = choicesOf(project);
+  const m = cardModel(item.data, project.mapping);
+  let gallery = null;
+  if (m.images.length) {
+    gallery = photoFrame(m.images, { cls: 'gallery', onEmpty: f => f.remove() });
+    if (m.images.length > 1) gallery.appendChild(h('div', { class: 'count' }));
+    showPhoto(gallery, photo);
+    gallery.addEventListener('click', e => {
+      const r = gallery.getBoundingClientRect();
+      if (!stepPhoto(gallery, e.clientX - r.left, r.width)) showPhoto(gallery, gallery.index + 1);
+    });
+  }
+  const body = h('div', { class: 'sheet-body' },
+    historyChips(item, choices),
+    titleRow(m),
+    m.subtitle ? h('div', { class: 'subtitle' }, m.subtitle) : null,
+    m.description ? h('div', { class: 'desc' }, m.description) : null,
+    m.details.length ? h('dl', {}, m.details.map(([k, v]) => [h('dt', {}, k), h('dd', {}, v)])) : null,
+    m.link ? h('a', { class: 'link', href: m.link, target: '_blank', rel: 'noopener noreferrer' }, `↗ ${m.link}`) : null);
+  const scroller = h('div', { class: 'sheet-scroll' }, gallery, body);
+  const sheet = h('div', { class: 'sheet', role: 'dialog', 'aria-modal': 'true', 'aria-label': m.title },
+    scroller,
+    h('div', { class: 'sheet-bar' },
+      h('button', { type: 'button', class: 'cbtn undo', 'data-close': '', title: 'Close (Esc)', 'aria-label': 'Close',
+                    onclick: () => onClose && onClose() }, '⌄'),
+      onDecide ? CHOICE_ORDER.map(c => h('button', {
+        type: 'button', class: `cbtn${c === 'unsure' ? ' small' : ''}`, 'data-sheet-choice': c,
+        title: choices[c].label, 'aria-label': choices[c].label, vars: { '--c': choices[c].color },
+        onclick: () => onDecide(c) }, choices[c].icon)) : null));
+  // pull down from the top to close, like a native sheet
+  let pullFrom = null;
+  scroller.addEventListener('touchstart', e => { pullFrom = scroller.scrollTop <= 0 ? e.touches[0].clientY : null; }, { passive: true });
+  scroller.addEventListener('touchend', e => {
+    if (pullFrom != null && e.changedTouches[0].clientY - pullFrom > 90 && onClose) onClose();
+    pullFrom = null;
+  });
+  sheet.decide = onDecide;
+  return sheet;
+}
+
+/** Open the details sheet. It gets a history entry, so the phone's back
+ *  gesture closes it instead of leaving the page. */
+function openDetail(item, project, { onDecide, photo = 0 } = {}) {
+  if (document.querySelector('.sheet')) return;
+  const sheet = renderDetail(item, project, {
+    photo, onClose: () => closeDetail(),
+    onDecide: onDecide && (c => { closeDetail(); onDecide(c); }),
+  });
+  document.body.appendChild(sheet);
+  document.body.classList.add('sheet-open');
+  history.pushState({ sheet: true }, '');
+  sheet.querySelector('[data-close]').focus();
+}
+
+function closeDetail({ fromHistory = false } = {}) {
+  const sheet = document.querySelector('.sheet');
+  if (!sheet) return;
+  sheet.remove();
+  document.body.classList.remove('sheet-open');
+  if (!fromHistory && history.state && history.state.sheet) history.back();
 }
 
 /* ============================================================ layout */
@@ -432,11 +637,14 @@ function choiceEditor(choices) {
 /** Field-to-slot pickers with a live card preview. Mutates `mapping`. */
 function mappingEditor({ mapping, fields, sample, project, keyField, onKeyField }) {
   let idx = 0;
+  mapping.gallery = mapping.gallery || [];
   const preview = h('div', { class: 'preview-wrap' });
   const counter = h('span', { class: 'hint' });
   const draw = () => {
-    const rec = sample[idx] || {};
-    const card = renderCard({ data: rec, history: [] }, { ...project, mapping });
+    const item = { data: sample[idx] || {}, history: [] };
+    const p = { ...project, mapping };
+    const card = renderCard(item, p);
+    card.addEventListener('click', e => cardTap(card, item, p, { x: e.clientX, target: e.target }));
     preview.firstChild ? preview.replaceChild(card, preview.firstChild) : preview.prepend(card);
     counter.textContent = `Sample ${idx + 1} of ${sample.length}`;
   };
@@ -445,23 +653,31 @@ function mappingEditor({ mapping, fields, sample, project, keyField, onKeyField 
     h('button', { type: 'button', class: 'btn small', onclick: () => { idx = (idx - 1 + sample.length) % sample.length; draw(); } }, '‹'),
     counter,
     h('button', { type: 'button', class: 'btn small', onclick: () => { idx = (idx + 1) % sample.length; draw(); } }, '›')));
+  preview.appendChild(h('p', { class: 'hint' }, 'Tap the card to preview its details.'));
 
   const opt = (f, sel) => h('option', { value: f, selected: f === sel }, f);
   const grid = h('div', { class: 'mapgrid' }, SLOTS.map(([slot, name]) => {
-    const s = h('select', { name: `slot-${slot}`, onchange: () => { mapping[slot] = s.value || null; draw(); } },
-      h('option', { value: '' }, '— none —'), fields.map(f => opt(f, mapping[slot])));
+    const s = h('select', { name: `slot-${slot}`, onchange: () => {
+      mapping[slot] = s.value || null;
+      if (slot === 'image') { mapping.gallery = mapping.gallery.filter(f => f !== s.value); drawGallery(); }
+      draw();
+    } }, h('option', { value: '' }, '— none —'), fields.map(f => opt(f, mapping[slot])));
     return h('label', { class: 'field' }, h('span', {}, name), s);
   }));
 
-  const details = h('div', { class: 'details-pick' }, fields.map(f => {
-    const cb = h('input', { type: 'checkbox', checked: (mapping.details || []).includes(f), onchange: () => {
-      const set = new Set(mapping.details || []);
+  // more photos: only fields that hold links are worth offering
+  const linky = fields.filter(f => sample.some(r => /https?:\/\/|^data:image\//i.test(String(r[f] || ''))));
+  const gallery = h('div', { class: 'gallery-pick' });
+  const drawGallery = () => gallery.replaceChildren(...linky.filter(f => f !== mapping.image).map(f => {
+    const cb = h('input', { type: 'checkbox', name: `gallery-${f}`, checked: mapping.gallery.includes(f), onchange: () => {
+      const set = new Set(mapping.gallery);
       cb.checked ? set.add(f) : set.delete(f);
-      mapping.details = fields.filter(x => set.has(x));
+      mapping.gallery = fields.filter(x => set.has(x));
       draw();
     } });
     return h('label', {}, cb, f);
   }));
+  drawGallery();
 
   let keyBox = null;
   if (onKeyField) {
@@ -473,7 +689,9 @@ function mappingEditor({ mapping, fields, sample, project, keyField, onKeyField 
 
   draw();
   return h('div', {}, preview, grid,
-    h('label', { class: 'field' }, h('span', {}, 'Also show these fields'), details),
+    linky.length > (mapping.image ? 1 : 0)
+      ? h('label', { class: 'field' }, h('span', {}, 'More photos (swipe through them on the card)'), gallery) : null,
+    h('p', { class: 'hint' }, 'Every other field shows when you open a card’s details.'),
     keyBox);
 }
 
@@ -667,45 +885,62 @@ function drawDeck() {
   }
   const top = renderCard(deck.queue[0], deck.project, { withStamps: true });
   top.dataset.item = deck.queue[0].id;
-  attachDrag(top);
+  attachDrag(top, deck.queue[0]);
   box.insertBefore(top, box.querySelector('.flying'));
 }
 
-function setStamps(card, dx, dy) {
-  const want = dragChoice(dx, dy, 1);
-  const strength = Math.min(1, Math.max(Math.abs(dx), -dy) / SWIPE_THRESHOLD);
+/** Stamps fade in up to half while dragging and snap to full only once
+ *  letting go would commit — so you can see when a release counts. */
+function setStamps(card, dx, dy, th) {
+  const { choice, progress } = dragLean(dx, dy, th);
   card.querySelectorAll('[data-stamp]').forEach(s => {
-    s.style.opacity = s.dataset.stamp === want ? strength : 0;
+    const on = s.dataset.stamp === choice;
+    s.style.opacity = !on ? 0 : progress >= 1 ? 1 : Math.min(progress, 1) * 0.5;
+    s.classList.toggle('armed', on && progress >= 1);
   });
 }
 
-function attachDrag(card) {
+function attachDrag(card, item) {
   let start = null;
   card.addEventListener('pointerdown', e => {
     if (e.button !== 0 || deck.busy) return;
-    start = { x: e.clientX, y: e.clientY, id: e.pointerId };
+    const r = card.getBoundingClientRect();
+    start = { x: e.clientX, y: e.clientY, id: e.pointerId, moved: false, target: e.target,
+              th: swipeThresholds(r.width, r.height) };
     card.setPointerCapture(e.pointerId);
-    card.classList.add('dragging');
   });
   card.addEventListener('pointermove', e => {
     if (!start || e.pointerId !== start.id) return;
     const dx = e.clientX - start.x, dy = e.clientY - start.y;
+    // a dead zone, so a tap or a resting thumb doesn't nudge the card
+    if (!start.moved && Math.hypot(dx, dy) < SWIPE.deadZone) return;
+    start.moved = true;
+    card.classList.add('dragging');
     card.style.transform = `translate(${dx}px, ${dy}px) rotate(${dx / 18}deg)`;
-    setStamps(card, dx, dy);
+    setStamps(card, dx, dy, start.th);
   });
-  const end = e => {
-    if (!start || e.pointerId !== start.id) return;
-    const dx = e.clientX - start.x, dy = e.clientY - start.y;
-    start = null;
+  const snapBack = () => {
     card.classList.remove('dragging');
-    const c = dragChoice(dx, dy);
-    if (c) { decide(c, { dx, dy }); return; }
     card.classList.add('settle');
     card.style.transform = '';
     setStamps(card, 0, 0);
   };
-  card.addEventListener('pointerup', end);
-  card.addEventListener('pointercancel', end);
+  card.addEventListener('pointerup', e => {
+    if (!start || e.pointerId !== start.id) return;
+    const dx = e.clientX - start.x, dy = e.clientY - start.y, { th, moved, target } = start;
+    start = null;
+    card.classList.remove('dragging');
+    // never moved past the dead zone: it was a tap
+    if (!moved) { cardTap(card, item, deck.project, { x: e.clientX, target }, c => decide(c)); return; }
+    const c = dragChoice(dx, dy, th);
+    if (c) decide(c, { dx, dy }); else snapBack();
+  });
+  // the browser took the gesture over (e.g. scrolling the text): never a decision
+  card.addEventListener('pointercancel', e => {
+    if (!start || e.pointerId !== start.id) return;
+    start = null;
+    snapBack();
+  });
 }
 
 function flyOut(card, choice, from) {
@@ -714,7 +949,7 @@ function flyOut(card, choice, from) {
   const w = window.innerWidth;
   const to = choice === 'unsure' ? { x: (from && from.dx) || 0, y: -window.innerHeight }
                                  : { x: choice === 'right' ? w * 1.2 : -w * 1.2, y: (from && from.dy) || 0 };
-  setStamps(card, choice === 'unsure' ? 0 : to.x, choice === 'unsure' ? -999 : 0);
+  setStamps(card, choice === 'unsure' ? 0 : to.x, choice === 'unsure' ? -w * 9 : 0, swipeThresholds(1, 1));
   card.classList.add('settle');
   card.style.transform = `translate(${to.x}px, ${to.y}px) rotate(${to.x / 18}deg)`;
   card.style.opacity = '0';
@@ -757,9 +992,19 @@ async function undo() {
 }
 
 document.addEventListener('keydown', e => {
-  if (!document.getElementById('deck') || e.target.matches('input, textarea, select')) return;
+  if (e.target.matches('input, textarea, select')) return;
   const map = { ArrowLeft: 'left', ArrowRight: 'right', ArrowUp: 'unsure', ArrowDown: 'unsure' };
-  if (map[e.key]) { e.preventDefault(); decide(map[e.key]); }
+  const sheet = document.querySelector('.sheet');
+  if (sheet) {
+    if (e.key === 'Escape') { e.preventDefault(); closeDetail(); }
+    else if (map[e.key] && sheet.decide) { e.preventDefault(); sheet.decide(map[e.key]); }
+    return;
+  }
+  if (!document.getElementById('deck')) return;
+  if ((e.key === 'Enter' || e.key === ' ' || e.key === 'i') && deck.queue.length && !e.target.closest('button')) {
+    e.preventDefault();
+    openDetail(deck.queue[0], deck.project, { onDecide: c => decide(c) });
+  } else if (map[e.key]) { e.preventDefault(); decide(map[e.key]); }
   else if (e.key === 'Backspace' || (e.key === 'z' && (e.metaKey || e.ctrlKey))) { e.preventDefault(); undo(); }
 });
 
@@ -804,10 +1049,11 @@ async function viewSummary(pid, roundNo) {
     const shown = items.filter(i => !filter || (i.choice || 'none') === filter);
     list.replaceChildren(...shown.map(i => {
       const m = cardModel(i.data, project.mapping);
+      const open = () => openDetail(i, project, isCurrent ? { onDecide: c => setChoice(i, c) } : {});
       return h('div', { class: 'itemrow', 'data-row': i.id },
         m.image ? h('img', { src: m.image, alt: '', loading: 'lazy', referrerPolicy: 'no-referrer',
                              onerror: e => { e.target.style.visibility = 'hidden'; } }) : null,
-        h('div', { class: 'grow' },
+        h('div', { class: 'grow', style: { cursor: 'pointer' }, onclick: open },
           h('div', { class: 't' }, m.title),
           h('div', { class: 's' }, [m.subtitle, ...i.history.map(x => `R${x.round} ${choices[x.choice].icon}`)].filter(Boolean).join(' · '))),
         isCurrent
@@ -899,7 +1145,7 @@ async function viewSettings(pid) {
     h('button', { class: 'iconbtn', title: 'Results', 'aria-label': 'Results', onclick: () => go(`#/p/${pid}/summary`) }, '📊'),
   ]);
   const edit = { name: project.name, choices: structuredClone(choicesOf(project)),
-                 mapping: { details: [], ...structuredClone(project.mapping) } };
+                 mapping: { gallery: [], ...structuredClone(project.mapping) } };
   const error = h('div', { class: 'error' });
   const name = h('input', { name: 'name', value: edit.name, oninput: () => { edit.name = name.value; } });
   const save = async btn => {
@@ -934,6 +1180,7 @@ async function viewSettings(pid) {
 /* ============================================================ router */
 
 async function route() {
+  closeDetail({ fromHistory: true });
   const parts = location.hash.replace(/^#\/?/, '').split('/').filter(Boolean);
   try {
     if (parts[0] === 'new') return viewNew();
@@ -958,6 +1205,7 @@ async function route() {
 
 document.getElementById('home-link').addEventListener('click', () => go('#/'));
 window.addEventListener('hashchange', route);
+window.addEventListener('popstate', () => closeDetail({ fromHistory: true }));
 route();
 </script>
 </body>

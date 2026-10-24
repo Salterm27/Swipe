@@ -15,7 +15,8 @@ const path = require('node:path');
 const { JSDOM } = require('jsdom');
 
 const BOOT_MARKER = '/* ============================================================ boot */';
-const EXPORTS = ['h', 'safeUrl', 'cardModel', 'dragChoice', 'choicesOf', 'plural', 'renderCard',
+const EXPORTS = ['splitUrls', 'photoFrame', 'showPhoto', 'stepPhoto', 'renderDetail', 'openDetail',
+  'closeDetail', 'cardTap', 'h', 'safeUrl', 'cardModel', 'dragChoice', 'dragLean', 'swipeThresholds', 'SWIPE', 'choicesOf', 'plural', 'renderCard',
   'statsBar', 'choiceChip', 'choiceEditor', 'mappingEditor', 'setStamps', 'DEFAULT_CHOICES',
   'PROJECT_ID'];
 
@@ -36,7 +37,8 @@ const { app, window, document } = loadApp();
 
 const project = (over = {}) => ({
   choices: app.DEFAULT_CHOICES,
-  mapping: { title: 'name', subtitle: 'city', image: 'img', description: 'about', link: 'url', details: ['age'] },
+  mapping: { title: 'name', subtitle: 'city', highlight: 'price', image: 'img', description: 'about', link: 'url',
+             gallery: ['more'] },
   ...over,
 });
 
@@ -55,15 +57,32 @@ describe('pure helpers', () => {
     assert.equal(app.safeUrl(null), null);
   });
 
-  test('cardModel follows the mapping and skips empty details', () => {
+  test('cardModel: face slots, and every other non-empty field as details', () => {
     const m = app.cardModel(
-      { n: 'Chair', p: '40', img: 'https://x.com/c.jpg', d: 'comfy', u: 'ftp://nope', c: '', w: 'oak' },
-      { title: 'n', subtitle: 'p', image: 'img', description: 'd', link: 'u', details: ['c', 'w'] });
+      { n: 'Chair', p: '40', h: '$90', img: 'https://x.com/c.jpg', d: 'comfy', u: 'ftp://nope', c: '', w: 'oak' },
+      { title: 'n', subtitle: 'p', highlight: 'h', image: 'img', description: 'd', link: 'u' });
     assert.equal(m.title, 'Chair');
     assert.equal(m.subtitle, '40');
+    assert.equal(m.highlight, '$90');
     assert.equal(m.image, 'https://x.com/c.jpg');
     assert.equal(m.link, null);
-    assert.deepEqual(m.details, [['w', 'oak']]);
+    assert.deepEqual(m.details, [['w', 'oak']]);       // mapped fields aren't repeated; empty ones skipped
+  });
+
+  test('cardModel collects photos from the main field and the gallery', () => {
+    const m = app.cardModel(
+      { a: 'https://x.com/1.jpg, https://x.com/2.jpg', b: 'https://x.com/2.jpg | javascript:alert(1)',
+        c: 'data:image/png;base64,AA,BB' },
+      { image: 'a', gallery: ['b', 'c'] });
+    assert.deepEqual(m.images, ['https://x.com/1.jpg', 'https://x.com/2.jpg', 'data:image/png;base64,AA,BB']);
+    assert.equal(m.image, 'https://x.com/1.jpg');
+    assert.deepEqual(m.details, []);                   // photo fields aren't repeated as details
+  });
+
+  test('splitUrls', () => {
+    assert.deepEqual(app.splitUrls(' a , b|c\nd '), ['a', 'b', 'c', 'd']);
+    assert.deepEqual(app.splitUrls('data:image/gif;base64,R0,lG'), ['data:image/gif;base64,R0,lG']);
+    assert.deepEqual(app.splitUrls(null), []);
   });
 
   test('cardModel never shows a blank title and tolerates odd values', () => {
@@ -71,17 +90,32 @@ describe('pure helpers', () => {
     assert.equal(app.cardModel({}, {}).title, '(empty)');
     assert.equal(app.cardModel({ n: 7 }, { title: 'n' }).title, '7');
     assert.equal(app.cardModel({ n: '  x  ' }, null).title, '  x  ');   // no mapping: first value as-is
-    assert.deepEqual(app.cardModel({ a: '1' }, { details: ['missing'] }).details, []);
+    assert.deepEqual(app.cardModel({ a: '1' }, { gallery: ['missing'] }).images, []);
   });
 
-  test('dragChoice needs the threshold and prefers the dominant axis for up', () => {
-    assert.equal(app.dragChoice(30, 0), null);
-    assert.equal(app.dragChoice(120, 0), 'right');
-    assert.equal(app.dragChoice(-120, 40), 'left');
-    assert.equal(app.dragChoice(20, -150), 'unsure');
-    assert.equal(app.dragChoice(150, -120), 'right');   // mostly sideways
-    assert.equal(app.dragChoice(0, 150), null);          // down is not a choice
-    assert.equal(app.dragChoice(5, 0, 1), 'right');      // custom threshold (stamp preview)
+  test('thresholds scale with the card, with a floor for small screens', () => {
+    assert.deepEqual(app.swipeThresholds(400, 600), { x: 160, y: 180 });
+    assert.deepEqual(app.swipeThresholds(200, 300), { x: 110, y: 130 });
+  });
+
+  test('dragChoice needs the full threshold in a clear direction', () => {
+    const th = { x: 160, y: 180 };
+    assert.equal(app.dragChoice(90, 0, th), null);        // the old 90px commit point
+    assert.equal(app.dragChoice(159, 0, th), null);
+    assert.equal(app.dragChoice(160, 0, th), 'right');
+    assert.equal(app.dragChoice(-170, 40, th), 'left');
+    assert.equal(app.dragChoice(170, -175, th), null);    // diagonal: neither
+    assert.equal(app.dragChoice(170, 190, th), null);     // mostly down: nothing
+    assert.equal(app.dragChoice(30, -200, th), 'unsure');
+    assert.equal(app.dragChoice(100, -200, th), null);    // up, but drifting too far sideways
+    assert.equal(app.dragChoice(0, 300, th), null);       // down is not a choice
+  });
+
+  test('dragLean reports direction and progress for the stamps', () => {
+    const th = { x: 100, y: 100 };
+    assert.deepEqual(app.dragLean(50, 0, th), { choice: 'right', progress: 0.5 });
+    assert.deepEqual(app.dragLean(0, -150, th), { choice: 'unsure', progress: 1.5 });
+    assert.deepEqual(app.dragLean(5, 5, th), { choice: null, progress: 0 });
   });
 
   test('choicesOf fills in defaults', () => {
@@ -135,48 +169,64 @@ describe('h()', () => {
 
 describe('renderCard', () => {
   const item = {
-    data: { name: 'Ana', city: 'Rosario', img: 'https://x.com/a.jpg', about: 'Line one\nline two',
-            url: 'https://ana.dev', age: '31' },
+    data: { name: 'Ana', city: 'Rosario', price: '$400', img: 'https://x.com/a.jpg', more: 'https://x.com/b.jpg',
+            about: 'Line one\nline two', url: 'https://ana.dev', age: '31' },
     history: [{ round: 1, choice: 'right' }],
   };
 
-  test('fills every slot from the mapping', () => {
+  test('the face shows only the essentials', () => {
     const card = app.renderCard(item, project());
+    assert.ok(card.classList.contains('photo'));
     assert.equal(card.querySelector('.title').textContent, 'Ana');
+    assert.equal(card.querySelector('.highlight').textContent, '$400');
     assert.equal(card.querySelector('.subtitle').textContent, 'Rosario');
     assert.equal(card.querySelector('.media img').getAttribute('src'), 'https://x.com/a.jpg');
-    assert.equal(card.querySelector('.desc').textContent, 'Line one\nline two');
-    assert.equal(card.querySelector('dt').textContent, 'age');
-    const a = card.querySelector('a.link');
-    assert.equal(a.href, 'https://ana.dev/');
-    assert.equal(a.target, '_blank');
-    assert.match(a.rel, /noopener/);
+    assert.equal(card.querySelectorAll('.bars i').length, 2);
     assert.match(card.querySelector('.hist').textContent, /R1 ✓ Yes/);
+    assert.ok(card.querySelector('[data-info]'));
+    // details wait for the sheet
+    assert.equal(card.querySelector('dl'), null);
+    assert.equal(card.querySelector('a'), null);
     assert.equal(card.querySelectorAll('[data-stamp]').length, 0);
+  });
+
+  test('a card without photos is a text card that shows its description', () => {
+    const card = app.renderCard({ data: { name: 'Plain', about: 'Some words' } }, project());
+    assert.ok(card.classList.contains('text'));
+    assert.equal(card.querySelector('.media'), null);
+    assert.equal(card.querySelector('.desc').textContent, 'Some words');
   });
 
   test('hostile list data stays inert', () => {
     const evil = '<img src=x onerror="window.pwned=1"><script>window.pwned=1</script>';
     const card = app.renderCard({
-      data: { name: evil, city: evil, about: evil, img: 'javascript:alert(1)', url: 'javascript:alert(1)', age: evil },
+      data: { name: evil, city: evil, price: evil, about: evil, img: 'javascript:alert(1)', url: 'javascript:alert(1)',
+              age: evil },
     }, project());
-    document.body.appendChild(card);
-    assert.equal(card.querySelectorAll('script, img').length, 0);   // no media: bad image url dropped
-    assert.equal(card.querySelector('a'), null);                      // bad link dropped
-    assert.equal(card.querySelector('.title').textContent, evil);
+    const sheet = app.renderDetail({ data: { name: evil, url: 'javascript:alert(1)', age: evil } }, project());
+    document.body.append(card, sheet);
+    for (const el of [card, sheet]) {
+      assert.equal(el.querySelectorAll('script, img').length, 0);   // bad image url dropped
+      assert.equal(el.querySelector('a'), null);                      // bad link dropped
+      assert.equal(el.querySelector('.title').textContent, evil);
+    }
+    assert.equal(sheet.querySelector('dd').textContent, evil);
     assert.equal(window.pwned, undefined);
-    card.remove();
+    card.remove(); sheet.remove();
   });
 
-  test('empty slots render nothing, and a broken image removes its frame', () => {
-    const card = app.renderCard({ data: { name: 'x', img: 'https://x.com/404.png' } }, project());
+  test('empty slots render nothing; broken photos are skipped, then the card falls back to text', () => {
+    const card = app.renderCard({ data: { name: 'x', img: 'https://x.com/404.png', more: 'https://x.com/ok.png' } }, project());
     assert.equal(card.querySelector('.subtitle'), null);
-    assert.equal(card.querySelector('.desc'), null);
-    assert.equal(card.querySelector('dl'), null);
+    assert.equal(card.querySelector('.highlight'), null);
     assert.equal(card.querySelector('.hist'), null);
     const img = card.querySelector('img');
-    img.onerror();
+    img.onerror();                                      // first fails: show the next
+    assert.equal(img.getAttribute('src'), 'https://x.com/ok.png');
+    assert.equal(card.querySelector('.bars'), null);    // one photo left: no bars
+    img.onerror();                                      // none left
     assert.equal(card.querySelector('.media'), null);
+    assert.ok(card.classList.contains('text'));
   });
 
   test('stamps use the project labels and colours, and follow the drag', () => {
@@ -185,12 +235,99 @@ describe('renderCard', () => {
     const right = card.querySelector('[data-stamp=right]');
     assert.equal(right.textContent, '❤️ Keep');
     assert.equal(right.style.getPropertyValue('--c'), '#ff0000');
-    app.setStamps(card, 45, 0);                       // halfway to the threshold
-    assert.equal(Number(right.style.opacity), 0.5);
+    const th = { x: 100, y: 100 };
+    app.setStamps(card, 50, 0, th);                   // halfway: faint, not armed
+    assert.equal(Number(right.style.opacity), 0.25);
+    assert.equal(right.classList.contains('armed'), false);
     assert.equal(Number(card.querySelector('[data-stamp=left]').style.opacity), 0);
-    app.setStamps(card, 0, -500);
+    app.setStamps(card, 100, 0, th);                  // release here would commit
+    assert.equal(Number(right.style.opacity), 1);
+    assert.equal(right.classList.contains('armed'), true);
+    app.setStamps(card, 0, -500, th);
     assert.equal(Number(card.querySelector('[data-stamp=unsure]').style.opacity), 1);
     assert.equal(Number(right.style.opacity), 0);
+  });
+});
+
+describe('photos and details', () => {
+  const item = {
+    data: { name: 'Flat', city: 'Palermo', price: '$400', img: 'https://x.com/1.jpg, https://x.com/2.jpg',
+            more: 'https://x.com/3.jpg', about: 'Bright', url: 'https://flat.dev', rooms: '3', floor: '' },
+    history: [],
+  };
+
+  test('showPhoto wraps around and moves the bar', () => {
+    const f = app.photoFrame(['a.jpg', 'b.jpg', 'c.jpg'].map(x => `https://x.com/${x}`));
+    const on = () => [...f.querySelectorAll('.bars i')].findIndex(b => b.classList.contains('on'));
+    assert.equal(on(), 0);
+    app.showPhoto(f, -1);
+    assert.equal(f.index, 2);
+    assert.equal(on(), 2);
+    assert.equal(f.querySelector('img').getAttribute('src'), 'https://x.com/c.jpg');
+    app.showPhoto(f, 3);
+    assert.equal(on(), 0);
+  });
+
+  test('stepPhoto: edges step, the middle does not', () => {
+    const f = app.photoFrame(['https://x.com/a.jpg', 'https://x.com/b.jpg']);
+    assert.equal(app.stepPhoto(f, 290, 300), true);
+    assert.equal(f.index, 1);
+    assert.equal(app.stepPhoto(f, 10, 300), true);
+    assert.equal(f.index, 0);
+    assert.equal(app.stepPhoto(f, 150, 300), false);
+    assert.equal(app.stepPhoto(app.photoFrame(['https://x.com/a.jpg']), 290, 300), false);   // single photo
+    assert.equal(app.stepPhoto(null, 290, 300), false);
+  });
+
+  test('the details sheet has the big gallery and every field', () => {
+    const decided = [];
+    const sheet = app.renderDetail(item, project(), { onDecide: c => decided.push(c), photo: 1 });
+    const g = sheet.querySelector('.gallery');
+    assert.equal(g.images.length, 3);
+    assert.equal(g.index, 1);
+    assert.equal(g.querySelector('.count').textContent, '2 / 3');
+    assert.equal(sheet.querySelector('.highlight').textContent, '$400');
+    assert.equal(sheet.querySelector('.desc').textContent, 'Bright');
+    assert.deepEqual([...sheet.querySelectorAll('dt')].map(d => d.textContent), ['rooms']);   // empty floor skipped
+    assert.equal(sheet.querySelector('a.link').href, 'https://flat.dev/');
+    assert.match(sheet.querySelector('a.link').rel, /noopener/);
+    sheet.querySelector('[data-sheet-choice=right]').click();
+    assert.deepEqual(decided, ['right']);
+    // read-only (no onDecide): only a close button
+    const ro = app.renderDetail(item, project());
+    assert.equal(ro.querySelectorAll('[data-sheet-choice]').length, 0);
+    assert.ok(ro.querySelector('[data-close]'));
+  });
+
+  test('openDetail/closeDetail: one sheet at a time, deciding closes it first', () => {
+    const decided = [];
+    app.openDetail(item, project(), { onDecide: c => decided.push([c, !!document.querySelector('.sheet')]) });
+    app.openDetail(item, project());                   // a second open is ignored
+    assert.equal(document.querySelectorAll('.sheet').length, 1);
+    assert.ok(document.body.classList.contains('sheet-open'));
+    document.querySelector('[data-sheet-choice=left]').click();
+    assert.deepEqual(decided, [['left', false]]);
+    assert.equal(document.querySelector('.sheet'), null);
+    assert.ok(!document.body.classList.contains('sheet-open'));
+    app.closeDetail();                                 // closing nothing is fine
+  });
+
+  test('cardTap: info button opens details, photo edges step, the middle opens', () => {
+    const card = app.renderCard(item, project());
+    document.body.appendChild(card);
+    card.getBoundingClientRect = () => ({ left: 0, top: 0, width: 300, height: 400 });
+    const frame = card.querySelector('.media');
+    app.cardTap(card, item, project(), { x: 280, target: card });
+    assert.equal(frame.index, 1);
+    assert.equal(document.querySelector('.sheet'), null);
+    app.cardTap(card, item, project(), { x: 280, target: card.querySelector('[data-info]') });
+    assert.equal(frame.index, 1);                      // info never steps
+    assert.equal(document.querySelector('.sheet .gallery').index, 1);   // sheet opens on the same photo
+    app.closeDetail();
+    app.cardTap(card, item, project(), { x: 150, target: card });
+    assert.ok(document.querySelector('.sheet'));
+    app.closeDetail();
+    card.remove();
   });
 });
 
@@ -224,10 +361,11 @@ describe('small widgets', () => {
   });
 
   test('mappingEditor re-renders the preview as slots change', () => {
-    const mapping = { title: 'a', details: [] };
-    const sample = [{ a: 'first', b: 'second' }, { a: 'next', b: 'other' }];
+    const mapping = { title: 'a' };
+    const sample = [{ a: 'first', b: 'second', p: 'https://x.com/1.jpg', q: 'https://x.com/2.jpg' },
+                    { a: 'next', b: 'other', p: '', q: '' }];
     let key = 'a';
-    const ed = app.mappingEditor({ mapping, fields: ['a', 'b'], sample, project: project({ mapping }),
+    const ed = app.mappingEditor({ mapping, fields: ['a', 'b', 'p', 'q'], sample, project: project({ mapping }),
                                    keyField: key, onKeyField: v => { key = v; } });
     const title = () => ed.querySelector('.preview-wrap .card .title').textContent;
     assert.equal(title(), 'first');
@@ -238,13 +376,28 @@ describe('small widgets', () => {
     assert.equal(mapping.title, 'b');
     assert.equal(title(), 'second');
 
-    [...ed.querySelectorAll('.preview-wrap button')].at(-1).click();   // next sample
-    assert.equal(title(), 'other');
+    const hl = ed.querySelector('select[name=slot-highlight]');
+    hl.value = 'a';
+    hl.dispatchEvent(new window.Event('change'));
+    assert.equal(ed.querySelector('.preview-wrap .card .highlight').textContent, 'first');
 
-    const cb = [...ed.querySelectorAll('.details-pick input')][0];
+    // only link-holding fields are offered as more photos, minus the main one
+    const img = ed.querySelector('select[name=slot-image]');
+    img.value = 'p';
+    img.dispatchEvent(new window.Event('change'));
+    assert.deepEqual([...ed.querySelectorAll('.gallery-pick input')].map(i => i.name), ['gallery-q']);
+    const cb = ed.querySelector('input[name=gallery-q]');
     cb.checked = true;
     cb.dispatchEvent(new window.Event('change'));
-    assert.deepEqual(mapping.details, ['a']);
+    assert.deepEqual(mapping.gallery, ['q']);
+    assert.equal(ed.querySelectorAll('.preview-wrap .card .bars i').length, 2);
+    // picking q as the main photo drops it from the gallery
+    img.value = 'q';
+    img.dispatchEvent(new window.Event('change'));
+    assert.deepEqual(mapping.gallery, []);
+
+    [...ed.querySelectorAll('.preview-wrap button')].at(-1).click();   // next sample
+    assert.equal(title(), 'other');
 
     const ks = ed.querySelector('select[name=key-field]');
     ks.value = '';
