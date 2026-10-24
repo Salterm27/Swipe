@@ -3,6 +3,20 @@
 // one server.
 const { test, expect } = require('@playwright/test');
 
+// Every test doubles as a Content-Security-Policy check: anything the
+// policy blocks (an inline style, a stray script) fails the test.
+test.beforeEach(async ({ page }) => {
+  await page.addInitScript(() => {
+    window.__csp = [];
+    document.addEventListener('securitypolicyviolation', e =>
+      window.__csp.push(`${e.violatedDirective} ${e.blockedURI} ${e.sample || ''}`.trim()));
+  });
+});
+test.afterEach(async ({ page }) => {
+  const violations = await page.evaluate(() => window.__csp || []).catch(() => []);
+  expect(violations).toEqual([]);
+});
+
 async function createViaApi(request, name, text, extra = {}) {
   const r = await request.post('/api/projects', { data: { name, text, ...extra } });
   return (await r.json()).id;

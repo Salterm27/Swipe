@@ -131,3 +131,26 @@ def test_item_fields_keep_the_lists_order(client):
     pid = make(client, text="zeta,alpha,mid\n1,2,3")["id"]
     item = client.get(f"/api/projects/{pid}/items").get_json()["items"][0]
     assert list(item["data"]) == ["zeta", "alpha", "mid"]
+
+
+def test_security_headers_on_every_response(client):
+    for path in ("/", "/api/health", "/api/nope", "/fonts/dm-sans-latin-400-normal.woff2"):
+        h = client.get(path).headers
+        assert h["X-Content-Type-Options"] == "nosniff", path
+        assert h["X-Frame-Options"] == "DENY"
+        assert h["Referrer-Policy"] == "no-referrer"
+        assert "frame-ancestors 'none'" in h["Content-Security-Policy"]
+
+
+def test_csp_allows_exactly_the_pages_inline_script_and_style(client):
+    import base64
+    import hashlib
+    import re
+    html = client.get("/").get_data(as_text=True)
+    csp = dict(d.strip().split(" ", 1) for d in client.get("/").headers["Content-Security-Policy"].split(";"))
+    for tag, directive in (("script", "script-src"), ("style", "style-src")):
+        bodies = re.findall(rf"<{tag}>(.*?)</{tag}>", html, re.S)
+        assert len(bodies) == 1
+        digest = base64.b64encode(hashlib.sha256(bodies[0].encode()).digest()).decode()
+        assert csp[directive] == f"'sha256-{digest}'"
+    assert "unsafe-inline" not in csp.values() and csp["default-src"] == "'none'"

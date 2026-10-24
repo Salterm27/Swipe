@@ -415,6 +415,14 @@ const SLOTS = [
 const SWIPE = { fracX: 0.4, minX: 110, fracY: 0.3, minY: 130, deadZone: 12 };
 const PROJECT_ID = /^[0-9a-f]{12}$/;   // same shape app.py generates
 
+/** A project id from untrusted input (the URL), or null. Encoding is a
+ *  no-op for a valid id, but makes "this can't change the path" obvious to
+ *  readers and to static analysis alike. */
+function projectIdFrom(raw) {
+  const s = String(raw || '');
+  return PROJECT_ID.test(s) ? encodeURIComponent(s) : null;
+}
+
 /** Thin line icons (24px grid, stroked) — restrained, and they inherit colour. */
 const ICON_PATHS = {
   results: 'M5 20V11M12 20V5M19 20v-6',
@@ -1399,10 +1407,11 @@ async function route() {
     draft = null;
     // ids come from the URL bar and end up in fetch() paths: only accept
     // the server's own format, so "#/p/..%2F.." can't aim requests elsewhere
-    if (parts[0] === 'p' && PROJECT_ID.test(parts[1] || '')) {
-      if (parts[2] === 'summary') return await viewSummary(parts[1], parts[3] ? Number(parts[3]) : null);
-      if (parts[2] === 'settings') return await viewSettings(parts[1]);
-      return await viewSwipe(parts[1]);
+    const pid = projectIdFrom(parts[1]);
+    if (parts[0] === 'p' && pid) {
+      if (parts[2] === 'summary') return await viewSummary(pid, parts[3] ? Number(parts[3]) : null);
+      if (parts[2] === 'settings') return await viewSettings(pid);
+      return await viewSwipe(pid);
     }
     return await viewHome();
   } catch (e) {

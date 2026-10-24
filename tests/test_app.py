@@ -168,7 +168,8 @@ def test_patch_project(client):
 
 def test_delete_is_a_rename(client):
     pid = make(client)["id"]
-    assert client.delete(f"/api/projects/{pid}").status_code == 200
+    r = client.delete(f"/api/projects/{pid}")
+    assert r.status_code == 200
     assert client.get("/api/projects").get_json() == []
     assert any(f.startswith(f"deleted-{pid}-") for f in os.listdir(swipe.DATA_DIR))
 

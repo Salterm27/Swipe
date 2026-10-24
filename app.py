@@ -11,7 +11,9 @@ Designed like WatchPi: Flask + SQLite, no other dependencies, and the server
 never makes an outbound request.
 """
 
+import base64
 import csv
+import hashlib
 import io
 import json
 import os
@@ -316,6 +318,54 @@ def histories(con, item_ids, before_round=None):
 def index():
     resp = app.send_static_file("index.html")
     resp.headers["Cache-Control"] = "no-cache"
+    return resp
+
+
+# ------------------------------------------------------------ security headers
+
+_csp = {"mtime": None, "value": ""}
+
+
+def _inline_hashes(html, tag):
+    return " ".join(
+        "'sha256-" + base64.b64encode(hashlib.sha256(body.encode()).digest()).decode() + "'"
+        for body in re.findall(rf"<{tag}>(.*?)</{tag}>", html, re.S)
+    )
+
+
+def content_security_policy():
+    """The page's one inline <script> and <style> are allowed by their hash,
+    so nothing else inline can run, even if some list data ever slipped
+    past the escaping. Recomputed whenever index.html changes."""
+    path = os.path.join(app.static_folder, "index.html")
+    mtime = os.path.getmtime(path)
+    if _csp["mtime"] != mtime:
+        with open(path, encoding="utf-8") as f:
+            html = f.read()
+        _csp["value"] = "; ".join([
+            "default-src 'none'",
+            f"script-src {_inline_hashes(html, 'script')}",
+            f"style-src {_inline_hashes(html, 'style')}",
+            "img-src 'self' https: http: data:",      # photos come from wherever the list points
+            "font-src 'self'",
+            "connect-src 'self'",
+            "manifest-src 'self' data:",
+            "base-uri 'none'",
+            "form-action 'none'",
+            "frame-ancestors 'none'",
+        ])
+        _csp["mtime"] = mtime
+    return _csp["value"]
+
+
+@app.after_request
+def security_headers(resp):
+    resp.headers["Content-Security-Policy"] = content_security_policy()
+    resp.headers["X-Content-Type-Options"] = "nosniff"
+    resp.headers["X-Frame-Options"] = "DENY"
+    resp.headers["Referrer-Policy"] = "no-referrer"    # don't leak the Pi's address to linked sites
+    resp.headers["Cross-Origin-Opener-Policy"] = "same-origin"
+    resp.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=(), payment=()"
     return resp
 
 

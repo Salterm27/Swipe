@@ -15,7 +15,7 @@ const path = require('node:path');
 const { JSDOM } = require('jsdom');
 
 const BOOT_MARKER = '/* ============================================================ boot */';
-const EXPORTS = ['icon', 'choiceGlyph', 'deckArt', 'splitUrls', 'photoFrame', 'showPhoto', 'stepPhoto', 'renderDetail', 'openDetail',
+const EXPORTS = ['projectIdFrom', 'icon', 'choiceGlyph', 'deckArt', 'splitUrls', 'photoFrame', 'showPhoto', 'stepPhoto', 'renderDetail', 'openDetail',
   'closeDetail', 'cardTap', 'h', 'safeUrl', 'cardModel', 'dragChoice', 'dragLean', 'swipeThresholds', 'SWIPE', 'choicesOf', 'plural', 'renderCard',
   'statsBar', 'choiceChip', 'choiceEditor', 'mappingEditor', 'setStamps', 'DEFAULT_CHOICES',
   'PROJECT_ID'];
@@ -129,6 +129,13 @@ describe('pure helpers', () => {
     assert.ok(app.PROJECT_ID.test('3f9a0c1b2d4e'));
     for (const bad of ['..%2F..%2Fapi', '3F9A0C1B2D4E', '3f9a0c1b2d4', '3f9a0c1b2d4e0', '', '3f9a0c1b2d4e/../x']) {
       assert.ok(!app.PROJECT_ID.test(bad), bad);
+    }
+  });
+
+  test('projectIdFrom only lets a real id through', () => {
+    assert.equal(app.projectIdFrom('3f9a0c1b2d4e'), '3f9a0c1b2d4e');
+    for (const bad of ['..%2F..%2Fapi', '../x', '', null, undefined, '3f9a0c1b2d4e?x=1']) {
+      assert.equal(app.projectIdFrom(bad), null, String(bad));
     }
   });
 
