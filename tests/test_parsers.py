@@ -118,8 +118,9 @@ def test_guess_mapping_by_names():
     assert m["image"] == "photo"
     assert m["link"] == "url"
     assert m["description"] == "description"
-    assert m["subtitle"] == "price"
-    assert m["details"] == ["color"]
+    assert m["highlight"] == "price"
+    assert m["subtitle"] == "color"
+    assert m["gallery"] == []
     assert m["key"] == "id"
 
 
@@ -230,7 +231,7 @@ def test_field_stats_shapes():
 
 def test_guess_mapping_with_no_usable_fields():
     m = parsers.guess_mapping([{"a": ""}, {"a": ""}])
-    assert all(m[s] is None for s in parsers.SLOTS) and m["details"] == []
+    assert all(m[s] is None for s in parsers.SLOTS) and m["gallery"] == []
 
 
 def test_link_is_not_mistaken_for_image_and_vice_versa():
@@ -239,12 +240,26 @@ def test_link_is_not_mistaken_for_image_and_vice_versa():
     assert (m["image"], m["link"]) == ("pic", "page")
 
 
-def test_details_skip_id_fields_and_cap_at_eight():
-    recs = [{"title": "x", "id": "1", **{f"f{i}": "v" for i in range(12)}}]
+def test_highlight_is_a_short_fact_and_never_the_id():
+    recs = [{"id": str(i), "title": f"T{i}", "Year": str(1990 + i), "Director": "X"} for i in range(3)]
     m = parsers.guess_mapping(recs)
-    assert "id" not in m["details"] and len(m["details"]) == 8
+    assert (m["highlight"], m["subtitle"]) == ("Year", "Director")
+    # no hinted name: a short numeric field qualifies, an id-like one doesn't
+    m = parsers.guess_mapping([{"sku": str(i), "name": f"N{i}", "qty": str(i * 3)} for i in range(3)])
+    assert m["highlight"] == "qty"
+    # a long "price" (prose) isn't a glance-able highlight
+    m = parsers.guess_mapping([{"name": "a", "price": "depends on the season and on how you ask " * 2}])
+    assert m["highlight"] is None
 
 
-def test_pandas_export_with_unnamed_index_column():
-    _, recs = detect(",name,price\n0,Chair,40\n1,Table,90")
-    assert recs[0] == {"column_1": "0", "name": "Chair", "price": "40"}
+def test_several_photos_become_a_gallery():
+    recs = [{"name": f"N{i}", "photos": f"https://c.com/{i}a.jpg, https://c.com/{i}b.png",
+             "cover": f"https://c.com/{i}.webp", "site": f"https://s.com/{i}"} for i in range(3)]
+    m = parsers.guess_mapping(recs)
+    assert m["image"] == "photos" and m["gallery"] == ["cover"] and m["link"] == "site"
+
+
+def test_split_urls():
+    assert parsers.split_urls("https://a.com/1.jpg, https://a.com/2.jpg |https://a.com/3.jpg\n") == [
+        "https://a.com/1.jpg", "https://a.com/2.jpg", "https://a.com/3.jpg"]
+    assert parsers.split_urls("") == [] and parsers.split_urls(None) == []

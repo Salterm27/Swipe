@@ -257,13 +257,13 @@ def clean_choices(raw):
 
 def clean_mapping(raw, fields):
     raw = raw or {}
-    if not isinstance(raw, dict) or not isinstance(raw.get("details") or [], list):
-        return None, "mapping must be an object with a details list"
+    if not isinstance(raw, dict) or not isinstance(raw.get("gallery") or [], list):
+        return None, "mapping must be an object with a gallery list"
     out = {}
     for slot in parsers.SLOTS:
         f = raw.get(slot)
         out[slot] = f if f in fields else None
-    out["details"] = [f for f in (raw.get("details") or []) if f in fields]
+    out["gallery"] = [f for f in (raw.get("gallery") or []) if f in fields and f != out["image"]]
     return out, None
 
 
