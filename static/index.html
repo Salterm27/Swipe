@@ -3,260 +3,393 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#0f1115">
+<meta name="theme-color" content="#f5f0e6">
 <title>Swipe</title>
 <link rel="apple-touch-icon" href="/icon-180.png">
 <link rel="icon" type="image/png" href="/icon-180.png">
-<link rel="manifest" href='data:application/json,{"name":"Swipe","short_name":"Swipe","start_url":"/","display":"standalone","background_color":"%230f1115","theme_color":"%230f1115","icons":[{"src":"/icon-512.png","sizes":"512x512","type":"image/png"},{"src":"/icon-180.png","sizes":"180x180","type":"image/png"}]}'>
+<link rel="manifest" href='data:application/json,{"name":"Swipe","short_name":"Swipe","start_url":"/","display":"standalone","background_color":"%23f5f0e6","theme_color":"%23f5f0e6","icons":[{"src":"/icon-512.png","sizes":"512x512","type":"image/png"},{"src":"/icon-180.png","sizes":"180x180","type":"image/png"}]}'>
 <style>
+  /* Self-hosted (OFL) so the app never calls out for fonts. */
+  @font-face { font-family: "Newsreader"; font-style: normal; font-weight: 400; font-display: swap; src: url(/fonts/newsreader-latin-400-normal.woff2) format("woff2"); }
+  @font-face { font-family: "Newsreader"; font-style: normal; font-weight: 500; font-display: swap; src: url(/fonts/newsreader-latin-500-normal.woff2) format("woff2"); }
+  @font-face { font-family: "Newsreader"; font-style: italic; font-weight: 400; font-display: swap; src: url(/fonts/newsreader-latin-400-italic.woff2) format("woff2"); }
+  @font-face { font-family: "Newsreader"; font-style: italic; font-weight: 500; font-display: swap; src: url(/fonts/newsreader-latin-500-italic.woff2) format("woff2"); }
+  @font-face { font-family: "DM Sans"; font-style: normal; font-weight: 400; font-display: swap; src: url(/fonts/dm-sans-latin-400-normal.woff2) format("woff2"); }
+  @font-face { font-family: "DM Sans"; font-style: normal; font-weight: 500; font-display: swap; src: url(/fonts/dm-sans-latin-500-normal.woff2) format("woff2"); }
+  @font-face { font-family: "DM Sans"; font-style: normal; font-weight: 600; font-display: swap; src: url(/fonts/dm-sans-latin-600-normal.woff2) format("woff2"); }
+
   :root {
-    --bg: #0f1115; --panel: #171a21; --panel2: #1f2430; --line: #2a3040;
-    --text: #e8eaf0; --muted: #8b93a7; --accent: #ff5a79;
-    --green: #3ecf8e; --red: #e5484d; --radius: 12px;
+    /* paper & ink */
+    --bg: #f5f0e6; --bg-deep: #ede6d8; --surface: #ffffff;
+    --line: #e8e1d4; --line-strong: #d8cfbe;
+    --ink: #1e3a2b; --ink-soft: #46584c; --muted: #626b5f;
+    /* accents */
+    --forest: #1f4a35; --forest-hover: #163a29;
+    --sage: #8fa98c; --sage-soft: #e5ece1; --sage-ink: #557259;
+    --terracotta: #b0604a; --terracotta-ink: #9b543d;
+    --ochre: #a8802a; --ochre-ink: #8a6418;
+    /* type */
+    --serif: "Newsreader", "Iowan Old Style", "Palatino Linotype", Georgia, serif;
+    --sans: "DM Sans", -apple-system, "Segoe UI", Roboto, sans-serif;
+    /* shape & depth */
+    --r-sm: 12px; --r: 16px; --r-lg: 24px; --r-xl: 30px;
+    --shadow: 0 1px 2px rgba(30,58,43,.04), 0 10px 30px -18px rgba(30,58,43,.22);
+    --shadow-lift: 0 2px 4px rgba(30,58,43,.05), 0 18px 36px -18px rgba(30,58,43,.28);
+    --ease: cubic-bezier(.2,.7,.2,1);
   }
   * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
   html, body { height: 100%; }
   body {
-    background: var(--bg); color: var(--text);
-    font: 16px/1.45 -apple-system, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg); color: var(--ink);
+    font: 16px/1.55 var(--sans); -webkit-font-smoothing: antialiased;
   }
-  header {
-    position: sticky; top: 0; z-index: 10; background: rgba(15,17,21,.92);
-    backdrop-filter: blur(8px); padding: 12px 16px; display: flex;
-    align-items: center; gap: 10px; border-bottom: 1px solid #262b36;
-    padding-top: calc(12px + env(safe-area-inset-top));
-  }
-  header h1 { font-size: 18px; font-weight: 700; cursor: pointer; white-space: nowrap; }
-  header h1 span { color: var(--accent); }
-  header .crumb {
-    color: var(--muted); font-size: 14px; overflow: hidden; text-overflow: ellipsis;
-    white-space: nowrap; min-width: 0;
-  }
-  header .spacer { flex: 1; }
-  .iconbtn {
-    background: none; border: none; color: var(--muted); font-size: 20px;
-    cursor: pointer; padding: 6px; line-height: 1;
-  }
-  .iconbtn:hover { color: var(--text); }
-  main { padding: 16px; max-width: 720px; margin: 0 auto; }
-  h2 { font-size: 20px; margin-bottom: 4px; }
-  h3 { font-size: 15px; margin: 18px 0 8px; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: .04em; }
-  p.hint, .hint { color: var(--muted); font-size: 14px; }
-  .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
-  .grow { flex: 1; min-width: 0; }
+  ::selection { background: var(--sage-soft); }
+  :focus-visible { outline: 2px solid var(--forest); outline-offset: 3px; }
+  svg.icon { width: 20px; height: 20px; flex: 0 0 auto; fill: none; stroke: currentColor;
+             stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+  em, .em { font-family: var(--serif); font-style: italic; font-weight: 400; }
 
-  /* controls */
+  /* header: quiet, it supports rather than leads */
+  header {
+    position: sticky; top: 0; z-index: 10; background: rgba(245,240,230,.88);
+    backdrop-filter: saturate(1.2) blur(10px); display: flex; align-items: center; gap: 14px;
+    padding: calc(12px + env(safe-area-inset-top)) 20px 12px; border-bottom: 1px solid transparent;
+  }
+  header h1 {
+    font: italic 500 26px/1 var(--serif); letter-spacing: -.01em; cursor: pointer; white-space: nowrap;
+    color: var(--forest);
+  }
+  header h1 span { color: var(--terracotta); font-style: normal; }
+  header .crumb { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  header .spacer { flex: 1; }
+  .eyebrow, header .crumb, label.field > span, h3 {
+    font: 600 11.5px/1.3 var(--sans); letter-spacing: .14em; text-transform: uppercase; color: var(--muted);
+  }
+  .iconbtn {
+    width: 44px; height: 44px; border-radius: 50%; border: 1px solid var(--line-strong);
+    background: var(--surface); color: var(--ink); cursor: pointer; display: inline-flex;
+    align-items: center; justify-content: center; transition: transform .2s var(--ease), box-shadow .2s var(--ease);
+  }
+  main { padding: 20px 20px 48px; max-width: 680px; margin: 0 auto; }
+
+  /* type */
+  h2 { font: 400 34px/1.12 var(--serif); letter-spacing: -.015em; color: var(--ink); margin: 6px 0 10px; }
+  h2 em { color: var(--forest); }
+  h3 { margin: 30px 0 12px; }
+  .lede { color: var(--ink-soft); font-size: 16.5px; max-width: 34em; }
+  p.hint, .hint { color: var(--muted); font-size: 14px; }
+  .row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .grow { flex: 1; min-width: 0; }
+  .divider { height: 1px; background: var(--line); margin: 28px 0; border: 0; }
+
+  /* form controls */
   input[type=text], input:not([type]), textarea, select {
-    width: 100%; background: var(--panel); border: 1px solid var(--line);
-    border-radius: var(--radius); color: var(--text); padding: 11px 13px;
-    font: inherit; outline: none;
+    width: 100%; background: var(--surface); border: 1px solid var(--line-strong);
+    border-radius: var(--r-sm); color: var(--ink); padding: 12px 14px; font: 16px/1.4 var(--sans);
+    transition: border-color .15s, box-shadow .15s;
   }
-  input:focus, textarea:focus, select:focus { border-color: var(--accent); }
-  textarea { min-height: 180px; resize: vertical; font: 14px/1.4 ui-monospace, Menlo, Consolas, monospace; }
-  label.field { display: block; margin: 12px 0; }
-  label.field > span { display: block; font-size: 13px; color: var(--muted); margin-bottom: 5px; }
+  input:focus, textarea:focus, select:focus {
+    outline: none; border-color: var(--forest); box-shadow: 0 0 0 4px var(--sage-soft);
+  }
+  textarea { min-height: 200px; resize: vertical; font: 14px/1.5 ui-monospace, "SF Mono", Menlo, Consolas, monospace; }
+  select {
+    appearance: none; padding-right: 40px; cursor: pointer;
+    background: var(--surface) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%231e3a2b' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E") no-repeat right 14px center / 16px;
+  }
+  input[type=checkbox] { accent-color: var(--forest); width: 16px; height: 16px; }
+  label.field { display: block; margin: 18px 0; }
+  label.field > span { display: block; margin-bottom: 8px; }
+
+  /* buttons: pills, forest for the main thing */
   .btn {
-    background: var(--panel2); border: 1px solid var(--line); color: var(--text);
-    border-radius: var(--radius); padding: 11px 16px; font: inherit; font-weight: 600;
-    cursor: pointer; text-decoration: none; display: inline-flex; align-items: center;
-    justify-content: center; gap: 6px;
+    min-height: 48px; padding: 12px 22px; border-radius: 999px; border: 1px solid var(--line-strong);
+    background: var(--surface); color: var(--ink); font: 500 15.5px/1.2 var(--sans); cursor: pointer;
+    text-decoration: none; display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+    transition: transform .2s var(--ease), box-shadow .2s var(--ease), background .2s;
   }
-  .btn:hover { border-color: #3a4256; }
-  .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
-  .btn.danger { color: var(--red); }
-  .btn.small { padding: 7px 11px; font-size: 14px; }
-  .btn:disabled { opacity: .5; cursor: default; }
-  .actions { display: flex; gap: 10px; margin-top: 20px; flex-wrap: wrap; }
+  .btn.primary { background: var(--forest); border-color: var(--forest); color: #fff; }
+  .btn.quiet { background: transparent; border-color: transparent; color: var(--ink-soft); padding-inline: 12px; }
+  .btn.danger { color: var(--terracotta-ink); background: transparent; }
+  .btn.small { min-height: 40px; padding: 8px 16px; font-size: 14.5px; }
+  .btn:disabled { opacity: .45; cursor: default; transform: none; }
+  .btn:active:not(:disabled), .iconbtn:active { transform: scale(.97); }
+  @media (hover: hover) {
+    .btn:hover:not(:disabled), .iconbtn:hover { transform: translateY(-1px); box-shadow: var(--shadow-lift); }
+    .btn.primary:hover:not(:disabled) { background: var(--forest-hover); }
+    .btn.quiet:hover:not(:disabled) { box-shadow: none; color: var(--ink); }
+  }
+  .actions { display: flex; gap: 12px; margin-top: 28px; flex-wrap: wrap; }
   .actions .btn { flex: 1; min-width: 140px; }
-  .panel { background: var(--panel); border: 1px solid #232835; border-radius: var(--radius); padding: 14px; margin: 12px 0; }
-  .error { color: var(--red); font-size: 14px; margin-top: 8px; min-height: 1em; }
-  .chip {
-    display: inline-flex; align-items: center; gap: 4px; padding: 3px 9px;
-    border-radius: 20px; font-size: 12.5px; font-weight: 600;
-    background: color-mix(in srgb, var(--c, var(--muted)) 18%, transparent);
-    color: var(--c, var(--muted)); white-space: nowrap;
+  .actions .btn.quiet { flex: 0 0 auto; min-width: 0; }
+  .panel {
+    background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-lg);
+    padding: 22px; margin: 16px 0; box-shadow: var(--shadow);
   }
-  .steps { display: flex; gap: 6px; margin-bottom: 18px; }
-  .steps div { flex: 1; height: 4px; border-radius: 2px; background: var(--panel2); }
-  .steps div.on { background: var(--accent); }
+  .panel h2 { font-size: 26px; margin-top: 0; }
+  details.panel > summary {
+    cursor: pointer; list-style: none; display: flex; align-items: center; gap: 10px;
+    font: 500 15.5px var(--sans); color: var(--ink); min-height: 28px;
+  }
+  details.panel > summary::-webkit-details-marker { display: none; }
+  details.panel > summary::after {
+    content: ""; margin-left: auto; width: 9px; height: 9px; border: solid var(--muted);
+    border-width: 0 1.6px 1.6px 0; transform: rotate(45deg); transition: transform .2s var(--ease);
+  }
+  details.panel[open] > summary::after { transform: rotate(-135deg); }
+  details.panel[open] > summary { margin-bottom: 12px; }
+  .error { color: var(--terracotta-ink); font-size: 14px; margin-top: 10px; min-height: 1em; }
+
+  /* a decision, quietly: coloured dot + label */
+  .chip {
+    display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px 4px 8px;
+    border-radius: 999px; font: 500 12.5px/1.2 var(--sans); white-space: nowrap;
+    background: var(--surface); color: var(--ink-soft); border: 1px solid var(--line);
+  }
+  .chip::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--c, var(--muted)); }
+  .pill {
+    display: inline-flex; align-items: center; padding: 4px 11px; border-radius: 999px;
+    font: 600 12.5px/1.2 var(--sans); background: var(--sage-soft); color: var(--sage-ink);
+    font-variant-numeric: tabular-nums; white-space: nowrap;
+  }
+
+  /* wizard steps: a thin line and a label */
+  .steps { margin-bottom: 18px; }
+  .steps .track { display: flex; gap: 6px; margin-top: 10px; }
+  .steps .track i { flex: 1; height: 2px; border-radius: 2px; background: var(--line-strong); }
+  .steps .track i.on { background: var(--forest); }
 
   /* home */
   .project {
-    display: block; width: 100%; text-align: left; background: var(--panel);
-    border: 1px solid #232835; border-radius: var(--radius); padding: 14px;
-    margin-bottom: 10px; color: var(--text); cursor: pointer; font: inherit;
+    display: block; width: 100%; text-align: left; background: var(--surface);
+    border: 1px solid var(--line); border-radius: var(--r-lg); padding: 20px 22px 18px;
+    margin-bottom: 14px; color: var(--ink); cursor: pointer; font: inherit; box-shadow: var(--shadow);
+    transition: transform .25s var(--ease), box-shadow .25s var(--ease);
   }
-  .project:hover { border-color: #3a4256; }
-  .project .name { font-weight: 700; font-size: 17px; }
-  .project .sub { color: var(--muted); font-size: 13.5px; margin: 2px 0 8px; }
-  .bar { height: 6px; border-radius: 3px; background: var(--panel2); overflow: hidden; display: flex; }
-  .bar > i { display: block; height: 100%; }
-  .empty { text-align: center; color: var(--muted); padding: 48px 16px; }
-  .empty .big { font-size: 48px; margin-bottom: 8px; }
+  @media (hover: hover) { .project:hover { transform: translateY(-2px); box-shadow: var(--shadow-lift); } }
+  .project .top-line { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  .project .name { font: 400 25px/1.2 var(--serif); margin: 6px 0 14px; letter-spacing: -.01em; }
+  .project.new {
+    background: transparent; box-shadow: none; border: 1px dashed var(--line-strong); color: var(--ink-soft);
+    display: flex; align-items: center; justify-content: center; gap: 10px; min-height: 76px; font-weight: 500;
+  }
+  .bar { height: 3px; border-radius: 3px; background: var(--bg-deep); overflow: hidden; display: flex; }
+  .bar > i { display: block; height: 100%; transition: width .4s var(--ease); }
+  .empty { text-align: center; padding: 40px 8px 24px; }
+  .empty h2 { font-size: 36px; margin: 22px auto 12px; max-width: 12em; }
+  .empty .lede { margin: 0 auto 28px; }
+  .art { display: block; margin: 0 auto; width: 132px; height: 112px; }
 
   /* choice editor */
-  .choice-ed { display: grid; grid-template-columns: 56px 1fr 46px; gap: 8px; align-items: center; margin: 8px 0; }
-  .choice-ed .side { font-size: 12px; color: var(--muted); grid-column: 1 / -1; margin-top: 6px; }
-  .choice-ed input.icon { text-align: center; font-size: 20px; padding: 8px 4px; }
+  .choice-ed {
+    display: grid; grid-template-columns: 52px 1fr 52px; gap: 10px; align-items: center;
+    padding: 16px; margin: 10px 0; background: var(--surface); border: 1px solid var(--line);
+    border-radius: var(--r);
+  }
+  .choice-ed .side { grid-column: 1 / -1; }
+  .choice-ed input.icon { text-align: center; font-size: 20px; padding: 10px 4px; border-radius: 50%; height: 52px; }
   .choice-ed input[type=color] {
-    width: 46px; height: 46px; border: 1px solid var(--line); border-radius: var(--radius);
-    background: var(--panel); padding: 4px; cursor: pointer;
+    width: 52px; height: 52px; border: 1px solid var(--line-strong); border-radius: 50%;
+    background: var(--surface); padding: 5px; cursor: pointer;
   }
-  .picks { display: flex; gap: 4px; flex-wrap: wrap; grid-column: 1 / -1; }
+  .choice-ed input[type=color]::-webkit-color-swatch-wrapper { padding: 0; }
+  .choice-ed input[type=color]::-webkit-color-swatch { border: none; border-radius: 50%; }
+  .choice-ed input[type=color]::-moz-color-swatch { border: none; border-radius: 50%; }
+  .picks { display: flex; gap: 6px; flex-wrap: wrap; grid-column: 1 / -1; }
   .picks button {
-    background: var(--panel2); border: 1px solid transparent; border-radius: 8px;
-    font-size: 17px; width: 34px; height: 34px; cursor: pointer; color: var(--text);
+    background: var(--bg); border: 1px solid transparent; border-radius: 50%;
+    font-size: 17px; width: 40px; height: 40px; cursor: pointer; color: var(--ink);
+    transition: border-color .15s, transform .15s var(--ease);
   }
-  .picks button:hover { border-color: var(--line); }
+  .picks button:hover { border-color: var(--line-strong); }
 
   /* mapping */
-  .mapgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 0 12px; }
+  .mapgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 0 14px; }
   @media (max-width: 520px) { .mapgrid { grid-template-columns: 1fr; } }
-  .gallery-pick { display: flex; flex-wrap: wrap; gap: 6px; }
-  .gallery-pick label {
-    display: inline-flex; gap: 5px; align-items: center; background: var(--panel2);
-    padding: 5px 10px; border-radius: 20px; font-size: 13.5px; cursor: pointer;
+  .gallery-pick, .seg { display: flex; flex-wrap: wrap; gap: 8px; }
+  .gallery-pick label, .seg label {
+    display: inline-flex; gap: 8px; align-items: center; background: var(--surface);
+    border: 1px solid var(--line-strong); padding: 9px 14px; border-radius: 999px; font-size: 14.5px;
+    cursor: pointer; min-height: 44px;
   }
-  .preview-wrap { display: flex; flex-direction: column; align-items: center; gap: 10px; margin: 8px 0 4px; }
-  .preview-wrap .card { position: relative; width: min(100%, 340px); height: 440px; cursor: pointer; }
+  .seg label:has(input:checked), .gallery-pick label:has(input:checked) { border-color: var(--forest); background: var(--sage-soft); }
+  .preview-wrap { display: flex; flex-direction: column; align-items: center; gap: 12px; margin: 14px 0 6px; }
+  .preview-wrap .card { position: relative; width: min(100%, 340px); height: 460px; cursor: pointer; }
 
   /* deck */
-  /* viewport minus header (~58px) and main's own 16px top/bottom padding */
-  .swipe-main { display: flex; flex-direction: column; height: calc(100dvh - 90px - env(safe-area-inset-top)); padding-bottom: calc(12px + env(safe-area-inset-bottom)); }
-  .progress { display: flex; align-items: center; gap: 10px; font-size: 13.5px; color: var(--muted); margin-bottom: 10px; }
-  .progress .bar { flex: 1; }
-  .deck { position: relative; flex: 1; min-height: 300px; }
+  /* viewport minus header (~68px) and main's own padding */
+  .swipe-main {
+    display: flex; flex-direction: column; height: calc(100dvh - 88px - env(safe-area-inset-top));
+    padding-bottom: calc(4px + env(safe-area-inset-bottom)); margin-bottom: -48px;
+  }
+  .progress { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 10px 12px; margin-bottom: 16px; }
+  .progress .bar { grid-column: 1 / -1; }
+  .deck { position: relative; flex: 1; min-height: 320px; }
   .card {
-    position: absolute; inset: 0; background: var(--panel); border: 1px solid #262c3a;
-    border-radius: 18px; overflow: hidden; display: flex; flex-direction: column;
-    box-shadow: 0 10px 30px rgba(0,0,0,.35); touch-action: none; user-select: none;
-    cursor: grab; will-change: transform;
+    position: absolute; inset: 0; background: var(--surface); border: 1px solid var(--line);
+    border-radius: var(--r-xl); overflow: hidden; display: flex; flex-direction: column;
+    box-shadow: var(--shadow); touch-action: none; user-select: none; cursor: grab; will-change: transform;
   }
-  .card.behind { transform: scale(.95) translateY(12px); opacity: .6; pointer-events: none; }
-  .card.dragging { cursor: grabbing; transition: none; }
-  .card.settle { transition: transform .25s ease, opacity .25s ease; }
+  .card.behind { transform: scale(.955) translateY(14px); opacity: .7; pointer-events: none; box-shadow: none; }
+  .card.dragging { cursor: grabbing; transition: none; box-shadow: var(--shadow-lift); }
+  .card.settle { transition: transform .3s var(--ease), opacity .3s var(--ease); }
   .card.flying { z-index: 5; pointer-events: none; }
-  /* the face: photo fills the card, the essentials sit on a fade at the bottom */
-  .card .media { position: absolute; inset: 0; background: var(--panel2); }
-  .media img { width: 100%; height: 100%; object-fit: cover; display: block; pointer-events: none; }
-  .bars { position: absolute; top: 8px; left: 10px; right: 10px; display: flex; gap: 4px; z-index: 2; pointer-events: none; }
-  .bars i { flex: 1; height: 3px; border-radius: 2px; background: rgba(255,255,255,.35); }
-  .bars i.on { background: #fff; }
-  .card .top { position: absolute; top: 20px; left: 12px; right: 12px; z-index: 2; pointer-events: none; }
+  /* the photo sits contained on white, with room to breathe */
+  .media, .gallery { display: flex; flex-direction: column; gap: 12px; background: var(--surface); }
+  .card .media { flex: 1 1 auto; min-height: 0; padding: 18px 18px 6px; }
+  .media img, .gallery img { flex: 1 1 auto; min-height: 0; width: 100%; object-fit: contain; display: block;
+               pointer-events: none; border-radius: var(--r-sm); }
+  .bars { display: flex; gap: 5px; pointer-events: none; padding: 0 30%; }
+  .bars i { flex: 1; height: 2px; border-radius: 2px; background: var(--line-strong); transition: background .2s; }
+  .bars i.on { background: var(--forest); }
+  .card .top { position: absolute; top: 16px; left: 16px; right: 16px; z-index: 2; pointer-events: none; }
   .hist { display: flex; gap: 6px; flex-wrap: wrap; }
-  .card .face {
-    position: relative; z-index: 1; margin-top: auto; padding: 90px 64px 20px 18px; color: #fff;
-    background: linear-gradient(to bottom, transparent, rgba(8,9,12,.75) 35%, rgba(8,9,12,.94));
-  }
-  .card.text { background: linear-gradient(160deg, #262c3b, var(--panel) 70%); }
-  .card.text .face { margin: auto 0; background: none; padding: 28px 64px 28px 22px; }
-  .title-row { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
-  .title { font-size: 26px; font-weight: 800; line-height: 1.15; overflow-wrap: anywhere; }
+  .card .face { position: relative; padding: 10px 76px 24px 24px; }
+  .card.text { justify-content: center; background: linear-gradient(180deg, var(--surface), #fcfaf5); }
+  .card.text .face { padding: 32px 28px 84px; }
+  .card.text .title { font-size: 34px; }
+  .title-row { display: flex; align-items: baseline; gap: 10px 12px; flex-wrap: wrap; }
+  .title { font: 400 29px/1.12 var(--serif); letter-spacing: -.012em; color: var(--ink); overflow-wrap: anywhere; }
   .highlight {
-    font-size: 15px; font-weight: 700; padding: 2px 10px; border-radius: 20px; white-space: nowrap;
-    background: rgba(255,255,255,.16); max-width: 100%; overflow: hidden; text-overflow: ellipsis;
+    font: 600 13px/1.2 var(--sans); padding: 5px 11px; border-radius: 999px; white-space: nowrap;
+    background: var(--sage-soft); color: var(--sage-ink); max-width: 100%; overflow: hidden; text-overflow: ellipsis;
+    font-variant-numeric: tabular-nums;
   }
-  .subtitle { color: var(--accent); font-weight: 600; font-size: 15.5px; margin-top: 4px; overflow-wrap: anywhere; }
-  .desc { color: #c5cad6; font-size: 15px; white-space: pre-line; overflow-wrap: anywhere; }
+  .subtitle { font: 600 11.5px/1.4 var(--sans); letter-spacing: .14em; text-transform: uppercase; color: var(--sage-ink);
+              margin-bottom: 8px; overflow-wrap: anywhere; }
+  .desc { color: var(--ink-soft); font-size: 15.5px; line-height: 1.6; white-space: pre-line; overflow-wrap: anywhere; }
   .card .face .desc {
-    margin-top: 10px; display: -webkit-box; -webkit-line-clamp: 6; -webkit-box-orient: vertical; overflow: hidden;
+    margin-top: 18px; padding-top: 18px; border-top: 1px solid var(--line);
+    display: -webkit-box; -webkit-line-clamp: 6; -webkit-box-orient: vertical; overflow: hidden;
   }
   .card.photo .face .desc { display: none; }
   .info {
-    position: absolute; z-index: 3; right: 16px; bottom: 20px; width: 36px; height: 36px; border-radius: 50%;
-    border: 1.5px solid rgba(255,255,255,.75); background: rgba(0,0,0,.3); color: #fff; cursor: pointer;
-    font: italic 700 17px Georgia, serif;
+    position: absolute; z-index: 3; right: 20px; bottom: 22px; width: 44px; height: 44px; border-radius: 50%;
+    border: 1px solid var(--line-strong); background: var(--surface); color: var(--ink); cursor: pointer;
+    font: italic 500 19px/1 var(--serif); transition: transform .2s var(--ease), box-shadow .2s var(--ease);
   }
+  @media (hover: hover) { .info:hover { transform: translateY(-1px); box-shadow: var(--shadow-lift); } }
 
-  /* details sheet: big photo on top, everything else scrolls below it */
+  /* decision stamps: a calm pill that fills in once a release would count */
+  .stamp {
+    position: absolute; top: 26px; z-index: 4; padding: 8px 16px; border-radius: 999px;
+    border: 1.5px solid var(--c); color: var(--c); background: rgba(255,255,255,.94);
+    font: 600 13px/1.2 var(--sans); letter-spacing: .14em; text-transform: uppercase;
+    opacity: 0; pointer-events: none; max-width: 70%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    transition: opacity .1s, background .15s, color .15s;
+  }
+  .stamp.right { left: 22px; transform: rotate(-4deg); }
+  .stamp.left { right: 22px; transform: rotate(4deg); }
+  .stamp.unsure { left: 50%; transform: translateX(-50%); }
+  .stamp.armed { background: var(--c); color: #fff; }
+
+  /* the three decisions: circles, the "yes" one filled */
+  .controls { display: flex; justify-content: center; align-items: center; gap: 20px; padding-top: 20px; }
+  .cbtn {
+    width: 64px; height: 64px; border-radius: 50%; border: 1.5px solid var(--c);
+    background: var(--surface); color: var(--c); cursor: pointer; font: 400 26px/1 var(--serif);
+    display: flex; align-items: center; justify-content: center; box-shadow: var(--shadow);
+    transition: transform .2s var(--ease), box-shadow .2s var(--ease), background .2s;
+  }
+  .cbtn svg.icon { width: 26px; height: 26px; stroke-width: 1.8; }
+  .cbtn[data-choice=right], .cbtn[data-sheet-choice=right] { width: 72px; height: 72px; background: var(--c); color: #fff; }
+  .cbtn.small { width: 52px; height: 52px; font-size: 22px; }
+  .cbtn.small svg.icon { width: 22px; height: 22px; }
+  .cbtn.undo { --c: var(--line-strong); color: var(--ink-soft); width: 46px; height: 46px; box-shadow: none; }
+  .cbtn.undo svg.icon { width: 19px; height: 19px; }
+  .cbtn .glyph { font-style: italic; }
+  .cbtn:active:not(:disabled) { transform: scale(.93); }
+  @media (hover: hover) { .cbtn:hover:not(:disabled) { transform: translateY(-2px); box-shadow: var(--shadow-lift); } }
+  .cbtn:disabled { opacity: .35; cursor: default; }
+  .keys { text-align: center; margin-top: 14px; font-size: 10.5px; }
+  @media (hover: none) { .keys { display: none; } }
+  .done { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center;
+          justify-content: center; text-align: center; padding: 20px; }
+  .done h2 { margin-top: 20px; }
+  .done .lede { margin-bottom: 26px; }
+
+  /* details sheet: the photo large on white, then a magazine-style page */
   body.sheet-open { overflow: hidden; }
   .sheet {
     position: fixed; inset: 0; z-index: 40; background: var(--bg); display: flex; flex-direction: column;
-    padding-top: env(safe-area-inset-top); animation: sheet-in .18s ease-out;
+    padding-top: env(safe-area-inset-top); animation: sheet-in .32s var(--ease);
   }
-  @keyframes sheet-in { from { transform: translateY(30px); opacity: 0; } }
+  @keyframes sheet-in { from { transform: translateY(28px); opacity: 0; } }
   .sheet-scroll { flex: 1; overflow-y: auto; overscroll-behavior: contain; }
-  .gallery { position: relative; height: min(70dvh, 125vw); background: #000; cursor: pointer; }
-  .gallery img { width: 100%; height: 100%; object-fit: contain; display: block; }
-  .gallery .count {
-    position: absolute; right: 12px; bottom: 12px; font-size: 12.5px; padding: 3px 9px;
-    border-radius: 12px; background: rgba(0,0,0,.55); color: #fff;
-  }
-  .sheet-body { padding: 18px 18px 28px; max-width: 720px; margin: 0 auto; display: flex; flex-direction: column; gap: 10px; }
-  .sheet-body .highlight { background: var(--panel2); }
-  .sheet-body .desc { font-size: 16px; line-height: 1.5; }
-  .sheet-body dl { display: grid; grid-template-columns: minmax(80px, auto) 1fr; gap: 8px 14px; font-size: 14.5px;
-                   padding-top: 12px; border-top: 1px solid #232835; }
-  .sheet-body dt { color: var(--muted); }
-  .sheet-body dd { overflow-wrap: anywhere; white-space: pre-line; }
-  .sheet-body .link { color: #7aa7ff; overflow-wrap: anywhere; }
+  .gallery { position: relative; height: min(64dvh, 120vw); padding: 24px 24px 16px; cursor: pointer;
+             border-bottom: 1px solid var(--line); }
+  .gallery img { border-radius: var(--r); }
+  .gallery .count { position: absolute; right: 22px; top: 22px; }
+  .sheet-body { padding: 28px 24px 36px; max-width: 640px; margin: 0 auto; display: flex; flex-direction: column; gap: 14px; }
+  .sheet-body .title { font-size: 38px; }
+  .sheet-body .desc { font-size: 17px; line-height: 1.65; color: var(--ink); }
+  .sheet-body dl { margin-top: 8px; }
+  .meta { display: flex; justify-content: space-between; gap: 18px; padding: 13px 0; border-top: 1px solid var(--line); }
+  .meta:last-child { border-bottom: 1px solid var(--line); }
+  .meta dt { font: 600 11px/1.6 var(--sans); letter-spacing: .14em; text-transform: uppercase; color: var(--muted); flex: 0 0 auto; }
+  .meta dd { text-align: right; overflow-wrap: anywhere; white-space: pre-line; font-size: 15px; }
+  .more summary { cursor: pointer; padding: 14px 0 4px; color: var(--ink-soft); font-size: 14.5px; list-style: none; }
+  .more summary::-webkit-details-marker { display: none; }
+  .more summary em { color: var(--forest); }
+  .sheet-body .link { align-self: flex-start; margin-top: 8px; }
   .sheet-bar {
-    display: flex; justify-content: center; align-items: center; gap: 18px; background: var(--panel);
-    padding: 12px 12px calc(12px + env(safe-area-inset-bottom)); border-top: 1px solid #262b36;
+    display: flex; justify-content: center; align-items: center; gap: 20px; background: var(--surface);
+    padding: 14px 14px calc(14px + env(safe-area-inset-bottom)); border-top: 1px solid var(--line);
   }
-  .stamp {
-    position: absolute; top: 22px; padding: 6px 14px; border: 3px solid var(--c);
-    color: var(--c); border-radius: 10px; font-size: 26px; font-weight: 800;
-    text-transform: uppercase; opacity: 0; pointer-events: none; background: rgba(15,17,21,.6);
-    max-width: 70%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-  }
-  .stamp.right { left: 20px; transform: rotate(-12deg); }
-  .stamp.left { right: 20px; transform: rotate(12deg); }
-  .stamp.unsure { left: 50%; top: auto; bottom: 40px; transform: translateX(-50%); }
-  .stamp { transition: opacity .08s; }
-  .stamp.armed { box-shadow: 0 0 0 3px color-mix(in srgb, var(--c) 35%, transparent); }
-  .controls { display: flex; justify-content: center; align-items: center; gap: 18px; padding-top: 14px; }
-  .cbtn {
-    width: 64px; height: 64px; border-radius: 50%; border: 2px solid var(--c);
-    background: var(--panel); color: var(--c); font-size: 28px; cursor: pointer;
-    display: flex; align-items: center; justify-content: center; transition: transform .1s;
-  }
-  .cbtn:active { transform: scale(.92); }
-  .cbtn.small { width: 48px; height: 48px; font-size: 20px; }
-  .cbtn.undo { --c: var(--muted); width: 42px; height: 42px; font-size: 18px; border-width: 1px; }
-  .keys { text-align: center; color: #5d6578; font-size: 12px; margin-top: 8px; }
-  @media (hover: none) { .keys { display: none; } }
-  .done { text-align: center; padding: 40px 10px; }
-  .done .big { font-size: 56px; }
 
   /* summary */
-  .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px; }
+  .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 12px; margin-top: 20px; }
   .tile {
-    background: var(--panel); border: 1px solid #232835; border-radius: var(--radius);
-    padding: 12px; cursor: pointer; text-align: left; color: var(--text); font: inherit;
+    background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-lg);
+    padding: 16px 18px; cursor: pointer; text-align: left; color: var(--ink); font: inherit;
+    box-shadow: var(--shadow); transition: transform .2s var(--ease), box-shadow .2s var(--ease), border-color .2s;
   }
-  .tile.on { border-color: var(--c, var(--accent)); }
-  .tile .n { font-size: 26px; font-weight: 800; color: var(--c, var(--text)); }
-  .tile .l { font-size: 13px; color: var(--muted); }
-  .items { margin-top: 14px; }
-  .itemrow {
-    display: flex; align-items: center; gap: 10px; padding: 10px 0;
-    border-bottom: 1px solid #1d212b;
-  }
-  .itemrow img { width: 44px; height: 44px; object-fit: cover; border-radius: 8px; background: var(--panel2); flex: 0 0 auto; }
-  .itemrow .t { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .itemrow .s { font-size: 13px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .itemrow .pick { display: flex; gap: 4px; flex: 0 0 auto; }
+  @media (hover: hover) { .tile:hover { transform: translateY(-2px); box-shadow: var(--shadow-lift); } }
+  .tile.on { border-color: var(--c, var(--forest)); box-shadow: 0 0 0 3px color-mix(in srgb, var(--c, var(--forest)) 16%, transparent); }
+  .tile .n { font: 400 40px/1 var(--serif); color: var(--c, var(--ink)); font-variant-numeric: lining-nums; }
+  .tile .l { margin-top: 10px; display: flex; align-items: center; gap: 6px; }
+  .items { margin-top: 18px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-lg);
+           padding: 4px 18px; box-shadow: var(--shadow); }
+  .itemrow { display: flex; align-items: center; gap: 14px; padding: 14px 0; border-bottom: 1px solid var(--line); }
+  .itemrow:last-child { border-bottom: 0; }
+  .itemrow img { width: 52px; height: 52px; object-fit: contain; border-radius: var(--r-sm); background: var(--surface);
+                 border: 1px solid var(--line); flex: 0 0 auto; padding: 3px; }
+  .itemrow .t { font: 400 19px/1.25 var(--serif); overflow: hidden; overflow-wrap: anywhere;
+                display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+  .itemrow .s { font-size: 13px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-top: 2px; }
+  .itemrow .pick { display: flex; gap: 6px; flex: 0 0 auto; }
   .itemrow .pick button {
-    width: 34px; height: 34px; border-radius: 50%; border: 1px solid var(--line);
-    background: none; color: var(--muted); cursor: pointer; font-size: 15px;
+    width: 40px; height: 40px; border-radius: 50%; border: 1px solid var(--line-strong);
+    background: var(--surface); color: var(--muted); cursor: pointer; font: italic 17px var(--serif);
+    display: inline-flex; align-items: center; justify-content: center; transition: all .2s var(--ease);
   }
+  .itemrow .pick button svg.icon { width: 17px; height: 17px; }
   .itemrow .pick button.on { background: var(--c); border-color: var(--c); color: #fff; }
-  .seg { display: flex; gap: 6px; flex-wrap: wrap; margin: 6px 0; }
-  .seg label {
-    display: inline-flex; gap: 6px; align-items: center; background: var(--panel2);
-    padding: 7px 12px; border-radius: 20px; font-size: 14px; cursor: pointer;
-  }
+  .exports { display: flex; gap: 10px; flex-wrap: wrap; }
+  .empty-note { padding: 22px 0; text-align: center; font-family: var(--serif); font-style: italic; color: var(--muted); }
+
   .toast {
-    position: fixed; left: 50%; bottom: calc(24px + env(safe-area-inset-bottom)); transform: translateX(-50%);
-    background: #2a3040; color: var(--text); padding: 10px 16px; border-radius: 20px;
-    font-size: 14px; z-index: 50; box-shadow: 0 6px 20px rgba(0,0,0,.4);
+    position: fixed; left: 50%; bottom: calc(28px + env(safe-area-inset-bottom)); transform: translateX(-50%);
+    background: var(--forest); color: #fff; padding: 12px 20px; border-radius: 999px;
+    font-size: 14.5px; z-index: 50; box-shadow: var(--shadow-lift); animation: toast-in .3s var(--ease);
+  }
+  @keyframes toast-in { from { opacity: 0; transform: translate(-50%, 10px); } }
+
+  @media (max-width: 420px) {
+    main { padding: 16px 16px 40px; }
+    h2 { font-size: 30px; }
+    .card .face { padding: 8px 72px 20px 20px; }
+    .controls { gap: 16px; }
+  }
+  @media (pointer: coarse) { .itemrow .pick button { width: 44px; height: 44px; } }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
+    .btn:hover, .iconbtn:hover, .project:hover, .tile:hover, .cbtn:hover, .info:hover { transform: none !important; }
   }
 </style>
 </head>
 <body>
 <header>
-  <h1 id="home-link">Sw<span>ipe</span></h1>
+  <h1 id="home-link" role="link" tabindex="0" aria-label="Swipe — home">Swipe<span>.</span></h1>
   <div class="crumb" id="crumb"></div>
   <div class="spacer"></div>
   <div id="header-actions" class="row"></div>
@@ -267,9 +400,9 @@
 /* ============================================================ helpers */
 
 const DEFAULT_CHOICES = {
-  left:   { label: 'No',       icon: '✕', color: '#e5484d' },
-  right:  { label: 'Yes',      icon: '✓', color: '#3ecf8e' },
-  unsure: { label: 'Not sure', icon: '?', color: '#8b93a7' },
+  left:   { label: 'No',       icon: '✕', color: '#b0604a' },   // dusty terracotta
+  right:  { label: 'Yes',      icon: '✓', color: '#1f4a35' },   // forest
+  unsure: { label: 'Not sure', icon: '?', color: '#a8802a' },   // soft ochre
 };
 const CHOICE_ORDER = ['left', 'unsure', 'right'];
 const ICON_PICKS = ['✓', '✕', '?', '❤️', '👍', '👎', '⭐', '🔥', '🗑️', '📌', '⏭️', '💤', '🤔', '💰'];
@@ -281,6 +414,63 @@ const SLOTS = [
 // small screens). Generous on purpose: a mis-swipe costs more than a long one.
 const SWIPE = { fracX: 0.4, minX: 110, fracY: 0.3, minY: 130, deadZone: 12 };
 const PROJECT_ID = /^[0-9a-f]{12}$/;   // same shape app.py generates
+
+/** Thin line icons (24px grid, stroked) — restrained, and they inherit colour. */
+const ICON_PATHS = {
+  results: 'M5 20V11M12 20V5M19 20v-6',
+  settings: 'M4 7h9M17 7h3M15 5v4M4 17h3M11 17h9M9 15v4',
+  undo: 'M9 14 4 9l5-5M4 9h11a5 5 0 0 1 0 10h-3',
+  check: 'M5 12.5 10 17.5 19 7',
+  x: 'M6.5 6.5l11 11M17.5 6.5l-11 11',
+  down: 'M6 9l6 6 6-6',
+  plus: 'M12 5v14M5 12h14',
+  next: 'M5 12h14M13 6l6 6-6 6',
+  back: 'M19 12H5M11 6l-6 6 6 6',
+  download: 'M12 4v11M7 10l5 5 5-5M5 20h14',
+  file: 'M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8zM14 3v5h5',
+  trash: 'M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13',
+  external: 'M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5',
+};
+const SVG_NS = 'http://www.w3.org/2000/svg';
+
+function icon(name) {
+  const svg = document.createElementNS(SVG_NS, 'svg');
+  svg.setAttribute('viewBox', '0 0 24 24');
+  svg.setAttribute('class', 'icon');
+  svg.setAttribute('aria-hidden', 'true');
+  const path = document.createElementNS(SVG_NS, 'path');
+  path.setAttribute('d', ICON_PATHS[name]);
+  svg.appendChild(path);
+  return svg;
+}
+
+/** A small stack of cards in the house colours, for empty and done states. */
+function deckArt() {
+  const svg = document.createElementNS(SVG_NS, 'svg');
+  svg.setAttribute('viewBox', '0 0 132 112');
+  svg.setAttribute('class', 'art');
+  svg.setAttribute('aria-hidden', 'true');
+  [['#e5ece1', 14, 'rotate(-12 50 60)'], ['#f3e2db', 30, 'rotate(9 82 58)'], ['#ffffff', 22, '']].forEach(([fill, x, t]) => {
+    const r = document.createElementNS(SVG_NS, 'rect');
+    for (const [k, v] of Object.entries({ x, y: 14, width: 80, height: 92, rx: 14, fill, stroke: '#d8cfbe', transform: t })) {
+      if (v !== '') r.setAttribute(k, v);
+    }
+    svg.appendChild(r);
+  });
+  const tick = document.createElementNS(SVG_NS, 'path');
+  for (const [k, v] of Object.entries({ d: 'M49 60l9 9 18-20', fill: 'none', stroke: '#1f4a35', 'stroke-width': 3,
+                                         'stroke-linecap': 'round', 'stroke-linejoin': 'round' })) tick.setAttribute(k, v);
+  svg.appendChild(tick);
+  return svg;
+}
+
+/** The default decision icons get drawn line icons; anything custom (an
+ *  emoji, a letter) is shown as typed. */
+function choiceGlyph(ch) {
+  if (ch.icon === '✓') return icon('check');
+  if (ch.icon === '✕') return icon('x');
+  return h('span', { class: ch.icon === '?' ? 'glyph' : '' }, ch.icon);
+}
 
 /** Tiny hyperscript: h('div', {class: 'x', onclick}, child, 'text'). Text is
  *  always set as text, never parsed as HTML — list data is user content. */
@@ -478,8 +668,8 @@ function renderCard(item, project, { withStamps = false } = {}) {
   }
   card.appendChild(h('div', { class: 'top' }, historyChips(item, choices)));
   card.appendChild(h('div', { class: 'face' },
-    titleRow(m),
     m.subtitle ? h('div', { class: 'subtitle' }, m.subtitle) : null,
+    titleRow(m),
     m.description ? h('div', { class: 'desc' }, m.description) : null));
   card.appendChild(h('button', { type: 'button', class: 'info', 'data-info': '', title: 'Details', 'aria-label': 'Details' }, 'i'));
   if (withStamps) {
@@ -509,30 +699,37 @@ function renderDetail(item, project, { onDecide, onClose, photo = 0 } = {}) {
   let gallery = null;
   if (m.images.length) {
     gallery = photoFrame(m.images, { cls: 'gallery', onEmpty: f => f.remove() });
-    if (m.images.length > 1) gallery.appendChild(h('div', { class: 'count' }));
+    if (m.images.length > 1) gallery.appendChild(h('div', { class: 'count pill' }));
     showPhoto(gallery, photo);
     gallery.addEventListener('click', e => {
       const r = gallery.getBoundingClientRect();
       if (!stepPhoto(gallery, e.clientX - r.left, r.width)) showPhoto(gallery, gallery.index + 1);
     });
   }
+  // compact metadata; past the first few, the rest folds away
+  const meta = ([k, v]) => h('div', { class: 'meta' }, h('dt', {}, k), h('dd', {}, v));
+  const FIRST = 6;
   const body = h('div', { class: 'sheet-body' },
     historyChips(item, choices),
-    titleRow(m),
     m.subtitle ? h('div', { class: 'subtitle' }, m.subtitle) : null,
+    titleRow(m),
     m.description ? h('div', { class: 'desc' }, m.description) : null,
-    m.details.length ? h('dl', {}, m.details.map(([k, v]) => [h('dt', {}, k), h('dd', {}, v)])) : null,
-    m.link ? h('a', { class: 'link', href: m.link, target: '_blank', rel: 'noopener noreferrer' }, `↗ ${m.link}`) : null);
+    m.details.length ? h('dl', {}, m.details.slice(0, FIRST).map(meta)) : null,
+    m.details.length > FIRST ? h('details', { class: 'more' },
+      h('summary', {}, 'Show ', h('em', {}, `${m.details.length - FIRST} more`), ' details'),
+      h('dl', {}, m.details.slice(FIRST).map(meta))) : null,
+    m.link ? h('a', { class: 'link btn small', href: m.link, target: '_blank', rel: 'noopener noreferrer' },
+               'Open link', icon('external')) : null);
   const scroller = h('div', { class: 'sheet-scroll' }, gallery, body);
   const sheet = h('div', { class: 'sheet', role: 'dialog', 'aria-modal': 'true', 'aria-label': m.title },
     scroller,
     h('div', { class: 'sheet-bar' },
       h('button', { type: 'button', class: 'cbtn undo', 'data-close': '', title: 'Close (Esc)', 'aria-label': 'Close',
-                    onclick: () => onClose && onClose() }, '⌄'),
+                    onclick: () => onClose && onClose() }, icon('down')),
       onDecide ? CHOICE_ORDER.map(c => h('button', {
         type: 'button', class: `cbtn${c === 'unsure' ? ' small' : ''}`, 'data-sheet-choice': c,
         title: choices[c].label, 'aria-label': choices[c].label, vars: { '--c': choices[c].color },
-        onclick: () => onDecide(c) }, choices[c].icon)) : null));
+        onclick: () => onDecide(c) }, choiceGlyph(choices[c]))) : null));
   // pull down from the top to close, like a native sheet
   let pullFrom = null;
   scroller.addEventListener('touchstart', e => { pullFrom = scroller.scrollTop <= 0 ? e.touches[0].clientY : null; }, { passive: true });
@@ -584,37 +781,40 @@ function go(hash) { location.hash = hash; }
 /* ============================================================ home */
 
 async function viewHome() {
-  setHeader('', [h('button', { class: 'btn small primary', onclick: () => go('#/new') }, '＋ New')]);
-  const box = view();
-  box.replaceChildren(h('p', { class: 'hint' }, 'Loading…'));
+  setHeader('', [h('button', { class: 'btn small primary', onclick: () => go('#/new') }, icon('plus'), 'New project')]);
+  show(h('p', { class: 'hint' }, 'Loading…'));
   const projects = await api('/api/projects');
   if (!projects.length) {
-    box.replaceChildren(h('div', { class: 'empty' },
-      h('div', { class: 'big' }, '🃏'),
-      h('h2', {}, 'Turn any list into a deck'),
-      h('p', { class: 'hint', style: { margin: '6px 0 18px' } },
-        'Paste a list, decide what left and right mean, and swipe through it.'),
-      h('button', { class: 'btn primary', onclick: () => go('#/new') }, '＋ Create your first project')));
+    show(h('div', { class: 'empty' },
+      deckArt(),
+      h('h2', {}, 'Every list deserves a ', h('em', {}, 'second look.')),
+      h('p', { class: 'lede' },
+        'Paste anything — names, flats, books, half-formed ideas — decide what a swipe means, and sort it one card at a time.'),
+      h('button', { class: 'btn primary', onclick: () => go('#/new') }, 'Start your first project', icon('next'))));
     return;
   }
-  box.replaceChildren(...projects.map(p => {
-    const choices = choicesOf(p);
-    const r = p.round || { number: 1, total: 0, decided: 0, remaining: 0, counts: {} };
-    return h('button', { class: 'project', 'data-project': p.id,
-                         onclick: () => go(r.remaining ? `#/p/${p.id}` : `#/p/${p.id}/summary`) },
-      h('div', { class: 'name' }, p.name),
-      h('div', { class: 'sub' },
-        `Round ${r.number} · ${r.decided}/${r.total} decided`,
-        r.remaining ? '' : ' · ✓ round complete'),
-      statsBar(r, choices));
-  }));
+  show(
+    h('div', { class: 'eyebrow' }, 'Your projects'),
+    h('h2', {}, 'What are we ', h('em', {}, 'deciding'), ' today?'),
+    h('div', { style: { marginTop: '24px' } }, projects.map(p => {
+      const choices = choicesOf(p);
+      const r = p.round || { number: 1, total: 0, decided: 0, remaining: 0, counts: {} };
+      return h('button', { class: 'project', 'data-project': p.id,
+                           onclick: () => go(r.remaining ? `#/p/${p.id}` : `#/p/${p.id}/summary`) },
+        h('div', { class: 'top-line' },
+          h('span', { class: 'eyebrow' }, `Round ${r.number} · ${r.decided} of ${r.total} decided`),
+          h('span', { class: 'pill' }, r.remaining ? `${r.remaining} to go` : 'Sorted')),
+        h('div', { class: 'name' }, p.name),
+        statsBar(r, choices));
+    })),
+    h('button', { class: 'project new', onclick: () => go('#/new') }, icon('plus'), 'Start a new project'));
 }
 
 /* ============================================================ choice editor */
 
 function choiceEditor(choices) {
   const box = h('div', {});
-  const sides = { left: '← Swipe left', right: 'Swipe right →', unsure: '↑ Swipe up (don’t know)' };
+  const sides = { left: 'Swipe left ←', right: 'Swipe right →', unsure: 'Swipe up ↑ — not sure yet' };
   for (const c of ['right', 'left', 'unsure']) {
     const ch = choices[c];
     const icon = h('input', { class: 'icon', value: ch.icon, maxLength: 8, 'aria-label': `${c} icon`,
@@ -624,7 +824,7 @@ function choiceEditor(choices) {
     const color = h('input', { type: 'color', value: ch.color, 'aria-label': `${c} color`,
                                oninput: () => { ch.color = color.value; } });
     box.appendChild(h('div', { class: 'choice-ed' },
-      h('div', { class: 'side' }, sides[c]),
+      h('div', { class: 'side eyebrow' }, sides[c]),
       icon, label, color,
       h('div', { class: 'picks' }, ICON_PICKS.map(p =>
         h('button', { type: 'button', onclick: () => { icon.value = ch.icon = p; } }, p)))));
@@ -650,10 +850,10 @@ function mappingEditor({ mapping, fields, sample, project, keyField, onKeyField 
   };
   preview.appendChild(h('div', {}));
   preview.appendChild(h('div', { class: 'row' },
-    h('button', { type: 'button', class: 'btn small', onclick: () => { idx = (idx - 1 + sample.length) % sample.length; draw(); } }, '‹'),
+    h('button', { type: 'button', class: 'iconbtn', 'aria-label': 'Previous sample', onclick: () => { idx = (idx - 1 + sample.length) % sample.length; draw(); } }, icon('back')),
     counter,
-    h('button', { type: 'button', class: 'btn small', onclick: () => { idx = (idx + 1) % sample.length; draw(); } }, '›')));
-  preview.appendChild(h('p', { class: 'hint' }, 'Tap the card to preview its details.'));
+    h('button', { type: 'button', class: 'iconbtn', 'aria-label': 'Next sample', onclick: () => { idx = (idx + 1) % sample.length; draw(); } }, icon('next'))));
+  preview.appendChild(h('p', { class: 'hint' }, 'Tap the card to peek at its details.'));
 
   const opt = (f, sel) => h('option', { value: f, selected: f === sel }, f);
   const grid = h('div', { class: 'mapgrid' }, SLOTS.map(([slot, name]) => {
@@ -690,8 +890,8 @@ function mappingEditor({ mapping, fields, sample, project, keyField, onKeyField 
   draw();
   return h('div', {}, preview, grid,
     linky.length > (mapping.image ? 1 : 0)
-      ? h('label', { class: 'field' }, h('span', {}, 'More photos (swipe through them on the card)'), gallery) : null,
-    h('p', { class: 'hint' }, 'Every other field shows when you open a card’s details.'),
+      ? h('label', { class: 'field' }, h('span', {}, 'More photos — tap through them on the card'), gallery) : null,
+    h('p', { class: 'hint' }, 'Everything else waits in the card’s details, one tap away.'),
     keyBox);
 }
 
@@ -706,24 +906,27 @@ function newDraft() {
 function viewNew() {
   if (!draft) draft = newDraft();
   setHeader('New project');
-  const steps = h('div', { class: 'steps' }, [1, 2, 3].map(n => h('div', { class: n <= draft.step ? 'on' : '' })));
+  const steps = h('div', { class: 'steps' },
+    h('div', { class: 'eyebrow' }, `Step ${draft.step} of 3`),
+    h('div', { class: 'track' }, [1, 2, 3].map(n => h('i', { class: n <= draft.step ? 'on' : '' }))));
   const error = h('div', { class: 'error' });
 
   if (draft.step === 1) {
     const name = h('input', { name: 'name', value: draft.name, placeholder: 'e.g. Baby names, Apartments, Books to read',
                               oninput: () => { draft.name = name.value; } });
     show(steps,
-      h('h2', {}, 'What are you deciding?'),
+      h('h2', {}, 'What’s on the ', h('em', {}, 'table?')),
+      h('p', { class: 'lede' }, 'Give it a name, then decide what each swipe says.'),
       h('label', { class: 'field' }, h('span', {}, 'Project name'), name),
-      h('h3', {}, 'What does each swipe mean?'),
+      h('h3', {}, 'What each swipe means'),
       choiceEditor(draft.choices),
       error,
       h('div', { class: 'actions' },
-        h('button', { class: 'btn', onclick: () => { draft = null; go('#/'); } }, 'Cancel'),
+        h('button', { class: 'btn quiet', onclick: () => { draft = null; go('#/'); } }, 'Cancel'),
         h('button', { class: 'btn primary', 'data-next': 1, onclick: () => {
-          if (!draft.name.trim()) { error.textContent = 'Give it a name first.'; return; }
+          if (!draft.name.trim()) { error.textContent = 'It needs a name first — anything will do.'; return; }
           draft.step = 2; viewNew();
-        } }, 'Next: add the list →')));
+        } }, 'Next: your list', icon('next'))));
     name.focus();
     return;
   }
@@ -750,15 +953,15 @@ function viewNew() {
       } catch (e) { error.textContent = e.message; }
     };
     show(steps,
-      h('h2', {}, 'Add your list'),
-      h('p', { class: 'hint', style: { marginBottom: '12px' } }, 'Swipe works out the format by itself — you can correct it on the next step.'),
+      h('h2', {}, 'Bring your ', h('em', {}, 'list.')),
+      h('p', { class: 'lede', style: { marginBottom: '20px' } }, 'Paste it in whatever shape it’s in — Swipe works out the format, and you can correct it next.'),
       ta,
-      h('div', { class: 'row', style: { marginTop: '10px' } },
-        h('button', { class: 'btn small', onclick: () => file.click() }, '📄 Load a file'), file),
+      h('div', { class: 'row', style: { marginTop: '12px' } },
+        h('button', { class: 'btn small', onclick: () => file.click() }, icon('file'), 'Load a file'), file),
       error,
       h('div', { class: 'actions' },
-        h('button', { class: 'btn', onclick: () => { draft.step = 1; viewNew(); } }, '← Back'),
-        h('button', { class: 'btn primary', 'data-next': 2, onclick: read }, 'Next: lay out the card →')));
+        h('button', { class: 'btn quiet', onclick: () => { draft.step = 1; viewNew(); } }, icon('back'), 'Back'),
+        h('button', { class: 'btn primary', 'data-next': 2, onclick: read }, 'Next: the card', icon('next'))));
     return;
   }
 
@@ -790,18 +993,18 @@ function viewNew() {
     } catch (e) { error.textContent = e.message; btn.disabled = false; }
   };
   show(steps,
-    h('h2', {}, 'Lay out the card'),
-    h('p', { class: 'hint' }, `Found ${plural(p.count, 'item')} with ${plural(p.fields.length, 'field')}.`,
+    h('h2', {}, 'Dress the ', h('em', {}, 'card.')),
+    h('p', { class: 'lede' }, `${plural(p.count, 'item')}, ${plural(p.fields.length, 'field')}.`,
       p.truncated ? ' (Only the first 20,000 are kept.)' : '',
-      ' This is my best guess — change anything that looks off.'),
+      ' Here’s my best guess at the layout — tweak anything that looks off.'),
     h('label', { class: 'field' }, h('span', {}, 'Read as'), fmtSel),
     mappingEditor({ mapping: draft.mapping, fields: p.fields, sample: p.sample,
                     project: { choices: draft.choices }, keyField: draft.key_field,
                     onKeyField: v => { draft.key_field = v; } }),
     error,
     h('div', { class: 'actions' },
-      h('button', { class: 'btn', onclick: () => { draft.step = 2; viewNew(); } }, '← Back'),
-      h('button', { class: 'btn primary', 'data-create': 1, onclick: e => create(e.currentTarget) }, 'Start swiping 🃏')));
+      h('button', { class: 'btn quiet', onclick: () => { draft.step = 2; viewNew(); } }, icon('back'), 'Back'),
+      h('button', { class: 'btn primary', 'data-create': 1, onclick: e => create(e.currentTarget) }, 'Start swiping', icon('next'))));
 }
 
 /* ============================================================ swipe */
@@ -816,19 +1019,21 @@ async function viewSwipe(pid) {
   Object.assign(deck, { pid, project, queue: [], stats: project.round, saving: Promise.resolve(),
                        gone: new Set(), filling: null });
   setHeader(project.name, [
-    h('button', { class: 'iconbtn', title: 'Results', 'aria-label': 'Results', onclick: () => go(`#/p/${pid}/summary`) }, '📊'),
-    h('button', { class: 'iconbtn', title: 'Settings', 'aria-label': 'Settings', onclick: () => go(`#/p/${pid}/settings`) }, '⚙'),
+    h('button', { class: 'iconbtn', title: 'Results', 'aria-label': 'Results', onclick: () => go(`#/p/${pid}/summary`) }, icon('results')),
+    h('button', { class: 'iconbtn', title: 'Settings', 'aria-label': 'Settings', onclick: () => go(`#/p/${pid}/settings`) }, icon('settings')),
   ]);
   const choices = choicesOf(project);
   const main = h('div', { class: 'swipe-main' },
-    h('div', { class: 'progress' }, h('span', { id: 'round-label' }), h('div', { class: 'bar', id: 'pbar' }), h('span', { id: 'pcount' })),
+    h('div', { class: 'progress' },
+      h('span', { class: 'eyebrow', id: 'round-label' }), h('span', { class: 'pill', id: 'pcount' }),
+      h('div', { class: 'bar', id: 'pbar' })),
     h('div', { class: 'deck', id: 'deck' }),
     h('div', { class: 'controls', id: 'controls' },
-      h('button', { class: 'cbtn undo', title: 'Undo (Backspace)', 'aria-label': 'Undo', onclick: undo }, '↶'),
+      h('button', { class: 'cbtn undo', title: 'Undo (Backspace)', 'aria-label': 'Undo', onclick: undo }, icon('undo')),
       CHOICE_ORDER.map(c => h('button', {
         class: `cbtn${c === 'unsure' ? ' small' : ''}`, 'data-choice': c, title: choices[c].label,
-        'aria-label': choices[c].label, vars: { '--c': choices[c].color }, onclick: () => decide(c) }, choices[c].icon))),
-    h('div', { class: 'keys' }, `← ${choices.left.label} · ↑ ${choices.unsure.label} · → ${choices.right.label} · ⌫ undo`));
+        'aria-label': choices[c].label, vars: { '--c': choices[c].color }, onclick: () => decide(c) }, choiceGlyph(choices[c])))),
+    h('div', { class: 'keys eyebrow' }, `← ${choices.left.label} · ↑ ${choices.unsure.label} · → ${choices.right.label} · ⏎ details · ⌫ undo`));
   show(main);
   await refill();
   drawDeck();
@@ -869,11 +1074,10 @@ function drawDeck() {
     controls.style.visibility = deck.stats && deck.stats.decided ? 'visible' : 'hidden';
     controls.querySelectorAll('[data-choice]').forEach(b => { b.disabled = true; });
     box.prepend(h('div', { class: 'done' },
-      h('div', { class: 'big' }, '🎉'),
-      h('h2', {}, `Round ${deck.round} done`),
-      h('p', { class: 'hint', style: { margin: '6px 0 18px' } },
-        'See what you picked, export it, or start another round.'),
-      h('button', { class: 'btn primary', onclick: () => go(`#/p/${deck.pid}/summary`) }, '📊 See results')));
+      deckArt(),
+      h('h2', {}, `That’s round ${deck.round}, `, h('em', {}, 'sorted.')),
+      h('p', { class: 'lede' }, 'Have a look at your piles, take them with you, or go round again.'),
+      h('button', { class: 'btn primary', onclick: () => go(`#/p/${deck.pid}/summary`) }, 'See the results', icon('next'))));
     return;
   }
   controls.style.visibility = 'visible';
@@ -1019,7 +1223,7 @@ async function viewSummary(pid, roundNo) {
   const res = await api(`/api/projects/${pid}/items?round=${number}`);
   const items = res.items;
   setHeader(project.name, [
-    h('button', { class: 'iconbtn', title: 'Settings', 'aria-label': 'Settings', onclick: () => go(`#/p/${pid}/settings`) }, '⚙'),
+    h('button', { class: 'iconbtn', title: 'Settings', 'aria-label': 'Settings', onclick: () => go(`#/p/${pid}/settings`) }, icon('settings')),
   ]);
 
   let filter = null;
@@ -1032,10 +1236,10 @@ async function viewSummary(pid, roundNo) {
     const tile = (key, n, label, color) => h('button', {
       class: `tile${filter === key ? ' on' : ''}`, 'data-tile': key, vars: color ? { '--c': color } : {},
       onclick: () => { filter = filter === key ? null : key; drawTiles(); drawList(); } },
-      h('div', { class: 'n' }, n), h('div', { class: 'l' }, label));
+      h('div', { class: 'n' }, n), h('div', { class: 'l eyebrow' }, label));
     tiles.replaceChildren(
-      ...['right', 'unsure', 'left'].map(c => tile(c, counts[c], `${choices[c].icon} ${choices[c].label}`, choices[c].color)),
-      ...(counts.none ? [tile('none', counts.none, 'Not decided yet')] : []));
+      ...['right', 'unsure', 'left'].map(c => tile(c, counts[c], choices[c].label, choices[c].color)),
+      ...(counts.none ? [tile('none', counts.none, 'Still to decide')] : []));
   };
   const setChoice = async (item, c) => {
     try {
@@ -1059,10 +1263,11 @@ async function viewSummary(pid, roundNo) {
         isCurrent
           ? h('div', { class: 'pick' }, CHOICE_ORDER.map(c => h('button', {
               class: i.choice === c ? 'on' : '', title: choices[c].label, vars: { '--c': choices[c].color },
-              onclick: () => setChoice(i, c) }, choices[c].icon)))
+              'aria-label': choices[c].label, 'aria-pressed': String(i.choice === c),
+              onclick: () => setChoice(i, c) }, choiceGlyph(choices[c]))))
           : (i.choice ? choiceChip(choices, i.choice) : h('span', { class: 'hint' }, '—')));
     }));
-    if (!shown.length) list.appendChild(h('p', { class: 'hint', style: { padding: '16px 0' } }, 'Nothing here.'));
+    if (!shown.length) list.appendChild(h('p', { class: 'empty-note' }, 'Nothing in this pile — yet.'));
   };
   drawTiles(); drawList();
 
@@ -1073,19 +1278,24 @@ async function viewSummary(pid, roundNo) {
   const exportUrl = (fmt, choice) => `/api/projects/${pid}/export?format=${fmt}${choice ? `&choice=${choice}` : ''}`;
   const remaining = project.round.remaining;
 
+  const heading = !isCurrent ? ['How round ', number, ' ', h('em', {}, 'went.')]
+    : remaining ? ['So far, so ', h('em', {}, 'good.')]
+    : ['Here’s how it ', h('em', {}, 'shook out.')];
   show(
-    h('div', { class: 'row' }, h('h2', { class: 'grow' }, isCurrent ? `Round ${number}` : `Round ${number} (past)`), roundSel),
-    h('p', { class: 'hint', style: { marginBottom: '12px' } }, `${plural(items.length, 'item')} in this round. Tap a pile to filter${isCurrent ? ', tap an icon to change a decision' : ''}.`),
+    h('div', { class: 'row' },
+      h('div', { class: 'eyebrow grow' }, `Round ${number}${isCurrent ? '' : ' · past'} · ${plural(items.length, 'item')}`), roundSel),
+    h('h2', {}, ...heading),
+    h('p', { class: 'hint' }, `Tap a pile to filter${isCurrent ? ', or a circle to change your mind' : ''}. Tap a row for its details.`),
     tiles,
     isCurrent && remaining ? h('div', { class: 'actions' },
-      h('button', { class: 'btn primary', onclick: () => go(`#/p/${pid}`) }, `🃏 Keep swiping (${remaining} left)`)) : null,
+      h('button', { class: 'btn primary', onclick: () => go(`#/p/${pid}`) }, `Keep swiping — ${remaining} to go`, icon('next'))) : null,
     list,
-    h('h3', {}, 'Export'),
-    h('div', { class: 'row' },
-      h('a', { class: 'btn small', href: exportUrl('csv'), download: '' }, '⬇ CSV — everything'),
-      h('a', { class: 'btn small', href: exportUrl('csv', 'right'), download: '' }, `⬇ CSV — only ${choices.right.label}`),
-      h('a', { class: 'btn small', href: exportUrl('json'), download: '' }, '⬇ JSON')),
-    h('p', { class: 'hint', style: { marginTop: '6px' } }, 'Exports include every field, your decision in each round, and the latest verdict.'),
+    h('h3', {}, 'Take it with you'),
+    h('div', { class: 'exports' },
+      h('a', { class: 'btn small', href: exportUrl('csv'), download: '' }, icon('download'), 'Everything (CSV)'),
+      h('a', { class: 'btn small', href: exportUrl('csv', 'right'), download: '' }, icon('download'), `Only “${choices.right.label}” (CSV)`),
+      h('a', { class: 'btn small', href: exportUrl('json'), download: '' }, icon('download'), 'JSON')),
+    h('p', { class: 'hint', style: { marginTop: '10px' } }, 'Every field, your decision in each round, and the latest verdict.'),
     isCurrent ? nextRoundPanel(project, counts) : null,
     isCurrent ? importPanel(project) : null);
 }
@@ -1095,9 +1305,9 @@ function nextRoundPanel(project, counts) {
   const carry = new Set(['right', 'unsure']);
   const error = h('div', { class: 'error' });
   const ta = h('textarea', { name: 'next-text', style: { minHeight: '110px' },
-    placeholder: 'Optional: paste more data. Items that match ones you have get the new fields; new ones join the round.' });
-  const piles = [...['right', 'unsure', 'left'].map(c => [c, `${choices[c].icon} ${choices[c].label} (${counts[c]})`]),
-                 ...(counts.none ? [['none', `Not decided (${counts.none})`]] : [])];
+    placeholder: 'Paste more data. Matching items gain the new fields; anything new joins the round.' });
+  const piles = [...['right', 'unsure', 'left'].map(c => [c, `${choices[c].label} · ${counts[c]}`]),
+                 ...(counts.none ? [['none', `Still to decide · ${counts.none}`]] : [])];
   const start = async btn => {
     btn.disabled = true; error.textContent = '';
     try {
@@ -1106,15 +1316,16 @@ function nextRoundPanel(project, counts) {
     } catch (e) { error.textContent = e.message; btn.disabled = false; }
   };
   return h('div', { class: 'panel' },
-    h('h2', {}, `Start round ${project.round.number + 1}`),
-    h('p', { class: 'hint' }, 'Your decisions so far are kept. Pick which piles go back in the deck:'),
+    h('div', { class: 'eyebrow' }, `Round ${project.round.number + 1}`),
+    h('h2', {}, 'Ready for a ', h('em', {}, 'second look?')),
+    h('p', { class: 'hint', style: { marginBottom: '14px' } }, 'Everything you’ve decided is kept. Choose which piles go back in the deck:'),
     h('div', { class: 'seg' }, piles.map(([c, label]) => {
       const cb = h('input', { type: 'checkbox', name: `carry-${c}`, checked: carry.has(c),
                               onchange: () => { cb.checked ? carry.add(c) : carry.delete(c); } });
       return h('label', {}, cb, label);
     })),
-    ta, error,
-    h('div', { class: 'actions' }, h('button', { class: 'btn primary', 'data-next-round': 1, onclick: e => start(e.currentTarget) }, 'Start next round →')));
+    h('label', { class: 'field' }, h('span', {}, 'Add more to the mix (optional)'), ta), error,
+    h('div', { class: 'actions' }, h('button', { class: 'btn primary', 'data-next-round': 1, onclick: e => start(e.currentTarget) }, `Start round ${project.round.number + 1}`, icon('next'))));
 }
 
 function importPanel(project) {
@@ -1129,8 +1340,8 @@ function importPanel(project) {
     } catch (e) { error.textContent = e.message; btn.disabled = false; }
   };
   return h('details', { class: 'panel' },
-    h('summary', { style: { cursor: 'pointer', fontWeight: 600 } }, '＋ Add data to this round'),
-    h('p', { class: 'hint', style: { margin: '8px 0' } },
+    h('summary', {}, icon('plus'), 'Add data to this round'),
+    h('p', { class: 'hint', style: { marginBottom: '10px' } },
       `Matched by ${project.key_field ? `“${project.key_field}”` : 'exact content'}. New fields show up in ⚙ Settings → card layout.`),
     ta, error,
     h('div', { class: 'actions' }, h('button', { class: 'btn', onclick: e => go_(e.currentTarget) }, 'Add')));
@@ -1142,7 +1353,7 @@ async function viewSettings(pid) {
   const project = await api(`/api/projects/${pid}`);
   const sample = (await api(`/api/projects/${pid}/items`)).items.slice(0, 25).map(i => i.data);
   setHeader(project.name, [
-    h('button', { class: 'iconbtn', title: 'Results', 'aria-label': 'Results', onclick: () => go(`#/p/${pid}/summary`) }, '📊'),
+    h('button', { class: 'iconbtn', title: 'Results', 'aria-label': 'Results', onclick: () => go(`#/p/${pid}/summary`) }, icon('results')),
   ]);
   const edit = { name: project.name, choices: structuredClone(choicesOf(project)),
                  mapping: { gallery: [], ...structuredClone(project.mapping) } };
@@ -1152,7 +1363,7 @@ async function viewSettings(pid) {
     btn.disabled = true; error.textContent = '';
     try {
       await api(`/api/projects/${pid}`, { method: 'PATCH', body: edit });
-      toast('Saved');
+      toast('Saved — looking good.');
       go(`#/p/${pid}`);
     } catch (e) { error.textContent = e.message; btn.disabled = false; }
   };
@@ -1162,19 +1373,20 @@ async function viewSettings(pid) {
     go('#/');
   };
   show(
-    h('h2', {}, 'Project settings'),
+    h('div', { class: 'eyebrow' }, 'Settings'),
+    h('h2', {}, 'Make it ', h('em', {}, 'yours.')),
     h('label', { class: 'field' }, h('span', {}, 'Name'), name),
-    h('h3', {}, 'Swipe meanings'),
+    h('h3', {}, 'What each swipe means'),
     choiceEditor(edit.choices),
     h('h3', {}, 'Card layout'),
     sample.length ? mappingEditor({ mapping: edit.mapping, fields: project.fields, sample, project: edit })
                   : h('p', { class: 'hint' }, 'No items in this round to preview.'),
     error,
     h('div', { class: 'actions' },
-      h('button', { class: 'btn', onclick: () => history.back() }, 'Cancel'),
-      h('button', { class: 'btn primary', onclick: e => save(e.currentTarget) }, 'Save')),
-    h('h3', {}, 'Danger zone'),
-    h('button', { class: 'btn danger', onclick: del }, '🗑 Delete project'));
+      h('button', { class: 'btn quiet', onclick: () => history.back() }, 'Cancel'),
+      h('button', { class: 'btn primary', onclick: e => save(e.currentTarget) }, 'Save changes')),
+    h('hr', { class: 'divider' }),
+    h('button', { class: 'btn danger small', onclick: del }, icon('trash'), 'Delete this project'));
 }
 
 /* ============================================================ router */
@@ -1196,14 +1408,17 @@ async function route() {
   } catch (e) {
     setHeader('');
     show(h('div', { class: 'empty' },
-      h('div', { class: 'big' }, '😵'), h('p', {}, e.message),
-      h('button', { class: 'btn', style: { marginTop: '14px' }, onclick: () => go('#/') }, 'Home')));
+      h('h2', {}, 'Well, that ', h('em', {}, 'didn’t work.')),
+      h('p', { class: 'lede' }, e.message),
+      h('button', { class: 'btn', onclick: () => go('#/') }, icon('back'), 'Back home')));
   }
 }
 
 /* ============================================================ boot */
 
-document.getElementById('home-link').addEventListener('click', () => go('#/'));
+const homeLink = document.getElementById('home-link');
+homeLink.addEventListener('click', () => go('#/'));
+homeLink.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go('#/'); } });
 window.addEventListener('hashchange', route);
 window.addEventListener('popstate', () => closeDetail({ fromHistory: true }));
 route();

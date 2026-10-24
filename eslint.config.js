@@ -31,4 +31,9 @@ module.exports = [
     languageOptions: { ecmaVersion: 2022, sourceType: 'commonjs', globals: { ...globals.node } },
     rules: { eqeqeq: ['error', 'smart'] },
   },
+  {
+    // Playwright callbacks passed to page.evaluate() run in the browser
+    files: ['tests/browser/**/*.js'],
+    languageOptions: { globals: { ...globals.node, ...globals.browser } },
+  },
 ];
