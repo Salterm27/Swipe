@@ -155,6 +155,12 @@ Project files sit flat in `data/` so that glob picks them up. Snapshots
 Deleting a project **renames** its file to `data/deleted-<id>-<timestamp>.db`
 instead of erasing it. To restore one, rename it back to `project-<id>.db`.
 
+## Security
+
+Swipe has no login: it's built for a home network, so don't expose the port
+to the internet. See [SECURITY.md](SECURITY.md) for the threat model, how to
+report an issue, and the scanning and hardening that's in place.
+
 ## API
 
 Everything the UI does goes through the API, so scripts can use it too.

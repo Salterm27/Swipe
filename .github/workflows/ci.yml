@@ -6,6 +6,11 @@ on:
   pull_request:
   workflow_dispatch:
 
+# Least privilege: jobs can read the code and nothing else. A job that
+# needs more (the alert job opens issues) asks for it explicitly.
+permissions:
+  contents: read
+
 jobs:
   # Static analysis: fast, and fails before any test runs.
   lint:

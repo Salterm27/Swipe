@@ -1,5 +1,6 @@
-# GitHub's static security analysis for the Python backend and the JS in
-# static/index.html. Results land in the repo's Security tab.
+# GitHub's static security analysis for the Python backend, the JS in
+# static/index.html and the workflows themselves (token permissions,
+# injection from PR titles and the like). Results land in the Security tab.
 name: CodeQL
 
 on:
@@ -8,6 +9,9 @@ on:
   pull_request:
   schedule:
     - cron: "27 4 * * 1"   # weekly, catches newly published queries
+
+permissions:
+  contents: read
 
 jobs:
   analyze:
@@ -18,7 +22,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        language: [python, javascript-typescript]
+        language: [python, javascript-typescript, actions]
     steps:
       - uses: actions/checkout@v7
       - uses: github/codeql-action/init@v4
