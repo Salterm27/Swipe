@@ -135,3 +135,116 @@ def test_key_falls_back_to_hash_when_nothing_unique():
     assert parsers.guess_mapping(recs)["key"] is None
     assert parsers.record_key(recs[0], None) == parsers.record_key({"item": "x"}, None)
     assert parsers.record_key({"id": " A1 "}, "id") == parsers.record_key({"id": "a1"}, "id")
+
+
+# ---------------------------------------------------------------- edge cases
+
+def test_windows_line_endings():
+    assert detect("name,qty\r\nA,1\r\nB,2\r\n")[1] == [{"name": "A", "qty": "1"}, {"name": "B", "qty": "2"}]
+    assert detect("one\r\ntwo")[1] == [{"item": "one"}, {"item": "two"}]
+
+
+def test_quoted_csv_fields_with_commas():
+    _, recs = detect('title,notes\n"Dune","long, slow, great"\n"Heat","tense"')
+    assert recs[0] == {"title": "Dune", "notes": "long, slow, great"}
+
+
+def test_ragged_rows_are_padded_and_mostly_ragged_is_not_csv():
+    _, recs = detect("a,b,c\n1,2,3\n4,5\n6,7,8\n9,10,11")
+    assert recs[1] == {"a": "4", "b": "5", "c": ""}
+    assert detect("a,b\nno commas here\nnor here\nor here")[0] == "lines"
+
+
+def test_header_heuristics():
+    # numbers or urls in the first row mean it's data, not a header
+    assert detect("1,2\n3,4")[1][0] == {"column_1": "1", "column_2": "2"}
+    assert detect("https://a.com,x\nhttps://b.com,y")[1][0]["column_2"] == "x"
+    # a first row far longer than the data under it is a data row
+    long = "This is a very long sentence that nobody would use as a column header"
+    assert detect(f"{long},{long}\nab,cd\nef,gh")[1][0]["column_1"] == long
+    # blank header cells get a name
+    assert list(detect("a,,c\n1,2,3\n4,5,6")[1][0]) == ["a", "column_2", "c"]
+
+
+def test_empty_rows_are_dropped():
+    assert detect("name,x\nA,1\n,\nB,2")[1] == [{"name": "A", "x": "1"}, {"name": "B", "x": "2"}]
+
+
+def test_unicode_and_emoji_survive():
+    assert detect("- 🍕 Pizza\n- Ñoquis")[1] == [{"item": "🍕 Pizza"}, {"item": "Ñoquis"}]
+
+
+def test_json_edge_shapes():
+    assert parsers.parse_json("[]") == []
+    assert parsers.parse_json('[1, {"a": 1}]') is None                  # mixed list
+    assert parsers.parse_json('{"a": [1], "b": {"c": 1}}') is None       # nothing record-like
+    assert parsers.parse_json("3") is None
+    _, recs = detect(json.dumps([{"x": None, "y": [{"z": 1}]}]))
+    assert recs == [{"x": "", "y": '[{"z": 1}]'}]                        # nested records stay JSON
+
+
+def test_jsonl_needs_objects_on_every_line():
+    assert parsers.parse_jsonl('{"a":1}') is None
+    assert parsers.parse_jsonl('{"a":1}\n[1]') is None
+    assert parsers.parse_jsonl('{"a":1}\nnope') is None
+
+
+def test_markdown_table_stops_at_first_non_row_and_pads():
+    recs = parsers.parse_markdown("| a | b |\n|---|---|\n| 1 |\nend\n| 9 | 9 |")
+    assert recs == [{"a": "1", "b": ""}]
+    assert parsers.parse_markdown("| just | pipes |") is None
+
+
+def test_key_value_rejections():
+    assert parsers.parse_keyvalue("Note: one thing") is None              # single lone key
+    assert parsers.parse_keyvalue("a: 1\nplain\nplain\nplain") is None    # mostly not key: value
+    assert parsers.parse_keyvalue("name: a\nname: b") == [{"name": "a"}, {"name": "b"}]
+
+
+def test_lines_strip_all_bullet_styles():
+    text = "+ a\n• b\n- [x] c\n* [ ] d\n10) e"
+    assert [r["item"] for r in parsers.parse_lines(text)] == ["a", "b", "c", "d", "e"]
+
+
+def test_records_are_capped(monkeypatch):
+    monkeypatch.setattr(parsers, "MAX_RECORDS", 3)
+    r = parsers.parse("a\nb\nc\nd\ne")
+    assert r["truncated"] and len(r["records"]) == 3
+    assert not parsers.parse("a\nb")["truncated"]
+
+
+def test_filename_hint_without_extension_is_ignored():
+    assert parsers.parse("a,b\n1,2", filename="README")["format"] == "csv"
+    assert parsers.parse('{"a":1}\n{"a":2}', filename="dump.ndjson")["format"] == "jsonl"
+
+
+def test_field_order_is_first_seen():
+    assert parsers.field_order([{"b": 1}, {"a": 1, "b": 2}, {"c": 3}]) == ["b", "a", "c"]
+
+
+def test_field_stats_shapes():
+    st = parsers.field_stats([{"u": "https://a.com/x.png", "n": "12"}, {"u": "", "n": "$3,50"}], ["u", "n"])
+    assert st["u"]["fill"] == 0.5 and st["u"]["image"] == 1 and st["u"]["url"] == 1
+    assert st["n"]["number"] == 1 and st["n"]["unique"] == 1
+
+
+def test_guess_mapping_with_no_usable_fields():
+    m = parsers.guess_mapping([{"a": ""}, {"a": ""}])
+    assert all(m[s] is None for s in parsers.SLOTS) and m["details"] == []
+
+
+def test_link_is_not_mistaken_for_image_and_vice_versa():
+    recs = [{"page": f"https://site.com/p/{i}", "pic": f"https://cdn.com/{i}.webp?w=300"} for i in range(3)]
+    m = parsers.guess_mapping(recs)
+    assert (m["image"], m["link"]) == ("pic", "page")
+
+
+def test_details_skip_id_fields_and_cap_at_eight():
+    recs = [{"title": "x", "id": "1", **{f"f{i}": "v" for i in range(12)}}]
+    m = parsers.guess_mapping(recs)
+    assert "id" not in m["details"] and len(m["details"]) == 8
+
+
+def test_pandas_export_with_unnamed_index_column():
+    _, recs = detect(",name,price\n0,Chair,40\n1,Table,90")
+    assert recs[0] == {"column_1": "0", "name": "Chair", "price": "40"}

@@ -1,11 +1,16 @@
 {
   "name": "swipe-tests",
   "private": true,
-  "description": "Browser tests only — the app itself ships no JS dependencies.",
+  "description": "Dev tooling only (tests, lint) — the app itself ships no JS dependencies.",
   "scripts": {
     "test:browser": "playwright test"
   },
   "devDependencies": {
-    "@playwright/test": "1.56.1"
+    "@eslint/js": "9.39.5",
+    "@playwright/test": "1.56.1",
+    "eslint": "9.39.5",
+    "eslint-plugin-html": "8.2.1",
+    "globals": "17.13.0",
+    "jsdom": "29.1.1"
   }
 }

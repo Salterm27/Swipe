@@ -75,7 +75,9 @@ swipe/
 ├── parsers.py             # list-format detection + card-layout guessing
 ├── requirements.txt       # just flask
 ├── static/index.html      # entire frontend, single file
-├── tests/                 # pytest (API, parsers), node unit tests, Playwright
+├── tests/                 # pytest (API, parsers, validation), jsdom unit tests, Playwright
+├── pyproject.toml         # ruff + coverage config
+├── eslint.config.js       # frontend lint (no innerHTML: list data is user content)
 └── deploy/
     ├── swipe.service          # systemd unit (port 8002)
     ├── autodeploy.sh          # pull-based deploy with health-gated rollback
@@ -148,14 +150,28 @@ Everything the UI does goes through the API, so scripts can use it too.
 ## Tests
 
 ```bash
-pip install -r requirements-dev.txt
-python -m pytest tests/ -v                 # API + parsers
-node --test tests/frontend.test.js         # pure frontend logic
-npm ci && npx playwright install chromium
+pip install -r requirements-dev.txt && npm ci
+
+# static analysis
+ruff check .                               # Python: pyflakes, bugbear, bandit security rules
+npx eslint .                               # the <script> in index.html + JS tooling
+
+# unit tests
+python -m pytest tests/ --cov              # API, parsers, validation (CI gate: 95% coverage)
+node --test tests/frontend.test.js         # frontend on jsdom: rendering, XSS-safety, editors
+
+# end to end
+npx playwright install chromium
 npx playwright test                        # real browser: wizard, drag, keys, rounds
 ```
 
-CI runs all three on every push and PR.
+CI runs all of it on every push and PR. **CodeQL** scans Python and JS
+(security-extended queries) on PRs and weekly. **Dependabot** opens weekly
+PRs for pip, npm and GitHub Actions versions. Dependencies are pinned
+exactly, so the Pi runs what CI tested and every bump goes through CI first.
+
+The frontend lint bans `innerHTML` and friends. All DOM is built with `h()`,
+which only sets text, because list data is user content.
 
 ## Not yet (ideas for next iterations)
 

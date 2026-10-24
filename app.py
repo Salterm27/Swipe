@@ -18,9 +18,10 @@ import os
 import re
 import secrets
 import sqlite3
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from flask import Flask, Response, abort, g, jsonify, request
+from werkzeug.exceptions import HTTPException
 
 import parsers
 
@@ -90,7 +91,7 @@ CREATE TABLE IF NOT EXISTS decisions (
 
 
 def now():
-    return datetime.now(timezone.utc).isoformat(timespec="seconds")
+    return datetime.now(UTC).isoformat(timespec="seconds")
 
 
 def err(msg, code=400):
@@ -127,11 +128,23 @@ def close_dbs(_exc):
         con.close()
 
 
-@app.errorhandler(404)
-def not_found(_e):
+@app.errorhandler(HTTPException)
+def http_error(e):
+    """API errors are always JSON, so the UI can show the message."""
     if request.path.startswith("/api/"):
-        return err("not found", 404)
-    return _e
+        msg = "not found" if e.code == 404 else e.description
+        return err(msg, e.code)
+    return e
+
+
+def json_body():
+    """The request's JSON object; missing body = {}, anything else = 400."""
+    data = request.get_json(silent=True)
+    if data is None:
+        return {}
+    if not isinstance(data, dict):
+        abort(400, "expected a JSON object")
+    return data
 
 
 def get_meta(con):
@@ -152,7 +165,7 @@ def current_round(con):
 
 def round_stats(con, round_id):
     total = con.execute("SELECT COUNT(*) FROM round_items WHERE round_id = ?", (round_id,)).fetchone()[0]
-    counts = {c: 0 for c in CHOICES}
+    counts = dict.fromkeys(CHOICES, 0)
     for r in con.execute("SELECT choice, COUNT(*) n FROM decisions WHERE round_id = ? GROUP BY choice", (round_id,)):
         counts[r["choice"]] = r["n"]
     decided = sum(counts.values())
@@ -221,8 +234,12 @@ def merge_fields(old, records):
 def clean_choices(raw):
     out = {}
     raw = raw or {}
+    if not isinstance(raw, dict):
+        raise ValueError("choices must be an object")
     for c in CHOICES:
         d, given = DEFAULT_CHOICES[c], raw.get(c) or {}
+        if not isinstance(given, dict):
+            raise ValueError(f"choices.{c} must be an object")
         color = str(given.get("color") or d["color"]).strip()
         if not re.match(r"^#[0-9a-fA-F]{6}$", color):
             raise ValueError(f"{c}: color must look like #3ecf8e")
@@ -236,6 +253,8 @@ def clean_choices(raw):
 
 def clean_mapping(raw, fields):
     raw = raw or {}
+    if not isinstance(raw, dict) or not isinstance(raw.get("details") or [], list):
+        raise ValueError("mapping must be an object with a details list")
     out = {}
     for slot in parsers.SLOTS:
         f = raw.get(slot)
@@ -245,8 +264,12 @@ def clean_mapping(raw, fields):
 
 
 def parse_body(data):
-    return parsers.parse(data.get("text", ""), fmt=data.get("format") or None,
-                         filename=data.get("filename"))
+    text, fmt, filename = data.get("text", ""), data.get("format") or None, data.get("filename")
+    if not isinstance(text, str):
+        raise ValueError("text must be a string")
+    if not isinstance(fmt, (str, type(None))) or not isinstance(filename, (str, type(None))):
+        raise ValueError("format and filename must be strings")
+    return parsers.parse(text, fmt=fmt, filename=filename)
 
 
 def item_dict(row, history=None, choice=None):
@@ -260,7 +283,8 @@ def histories(con, item_ids, before_round=None):
     if not item_ids:
         return out
     q = ",".join("?" * len(item_ids))
-    sql = (f"SELECT d.item_id, r.number, d.choice FROM decisions d JOIN rounds r ON r.id = d.round_id "
+    # only "?" placeholders are interpolated; values stay bound parameters
+    sql = (f"SELECT d.item_id, r.number, d.choice FROM decisions d JOIN rounds r ON r.id = d.round_id "  # noqa: S608
            f"WHERE d.item_id IN ({q})")
     args = list(item_ids)
     if before_round is not None:
@@ -294,7 +318,7 @@ def formats():
 def parse_preview():
     """Stateless dry run: what Swipe makes of this text, plus a guessed card
     layout. Nothing is stored until POST /api/projects."""
-    data = request.get_json(silent=True) or {}
+    data = json_body()
     try:
         res = parse_body(data)
     except ValueError as e:
@@ -325,22 +349,22 @@ def list_projects():
 
 @app.post("/api/projects")
 def create_project():
-    data = request.get_json(silent=True) or {}
+    data = json_body()
     name = str(data.get("name", "")).strip()[:120]
     if not name:
         return err("name is required")
     try:
         choices = clean_choices(data.get("choices"))
         res = parse_body(data)
+        fields = res["fields"]
+        guess = parsers.guess_mapping(res["records"], fields)
+        mapping = clean_mapping(data.get("mapping") or guess, fields)
     except ValueError as e:
         return err(str(e))
-    fields = res["fields"]
-    guess = parsers.guess_mapping(res["records"], fields)
     # key_field: absent → use the guess; null → match on the whole record
     key_field = data["key_field"] if "key_field" in data else guess["key"]
     if key_field not in fields:
         key_field = None
-    mapping = clean_mapping(data.get("mapping") or guess, fields)
 
     os.makedirs(DATA_DIR, exist_ok=True)
     pid = secrets.token_hex(6)
@@ -369,7 +393,7 @@ def get_project(pid):
 @app.patch("/api/projects/<pid>")
 def update_project(pid):
     con = open_project(pid)
-    data = request.get_json(silent=True) or {}
+    data = json_body()
     meta = get_meta(con)
     updates = {}
     if "name" in data:
@@ -383,7 +407,10 @@ def update_project(pid):
         except ValueError as e:
             return err(str(e))
     if "mapping" in data:
-        updates["mapping"] = clean_mapping(data["mapping"], meta.get("fields", []))
+        try:
+            updates["mapping"] = clean_mapping(data["mapping"], meta.get("fields", []))
+        except ValueError as e:
+            return err(str(e))
     with con:
         set_meta(con, **updates)
     return jsonify(project_summary(pid, con))
@@ -395,7 +422,7 @@ def delete_project(pid):
     so a slip of the thumb is recoverable by renaming it back."""
     open_project(pid)
     g.pop("cons", {}).pop(pid).close()
-    stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S")
+    stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%S")
     os.replace(project_path(pid), os.path.join(DATA_DIR, f"deleted-{pid}-{stamp}.db"))
     return jsonify(ok=True)
 
@@ -405,7 +432,7 @@ def queue(pid):
     """Next undecided items of the current round, in list order."""
     con = open_project(pid)
     rnd = current_round(con)
-    limit = max(1, min(int(request.args.get("limit", 10)), 100))
+    limit = max(1, min(request.args.get("limit", 10, type=int), 100))
     rows = con.execute(
         """SELECT i.* FROM round_items ri JOIN items i ON i.id = ri.item_id
            WHERE ri.round_id = ? AND NOT EXISTS
@@ -422,7 +449,7 @@ def queue(pid):
 def decide(pid):
     """Record (or change) the current round's decision for an item."""
     con = open_project(pid)
-    data = request.get_json(silent=True) or {}
+    data = json_body()
     choice = data.get("choice")
     if choice not in CHOICES:
         return err("choice must be left, right or unsure")
@@ -489,7 +516,7 @@ def import_more(pid):
     """Add more data to the current round. Items whose key matches existing
     ones gain the new fields; the rest are added to the deck."""
     con = open_project(pid)
-    data = request.get_json(silent=True) or {}
+    data = json_body()
     try:
         res = parse_body(data)
     except ValueError as e:
@@ -508,9 +535,9 @@ def next_round(pid):
     `carry` (default: right + unsure). Optional `text` imports more data
     into the new round in the same step."""
     con = open_project(pid)
-    data = request.get_json(silent=True) or {}
+    data = json_body()
     carry = data.get("carry") or ["right", "unsure"]
-    if not isinstance(carry, list) or any(c not in CHOICES + ("none",) for c in carry):
+    if not isinstance(carry, list) or any(c not in (*CHOICES, "none") for c in carry):
         return err("carry must be a list of left/right/unsure/none")
     res = None
     if str(data.get("text", "")).strip():
@@ -524,13 +551,11 @@ def next_round(pid):
     with con:
         rid = con.execute("INSERT INTO rounds (number, note, created_at) VALUES (?,?,?)",
                           (prev["number"] + 1, str(data.get("note", ""))[:200], now())).lastrowid
-        decided = [c for c in carry if c != "none"]
-        if decided:
+        for choice in set(carry) - {"none"}:
             con.execute(
-                f"""INSERT INTO round_items (round_id, item_id)
-                    SELECT ?, item_id FROM decisions
-                    WHERE round_id = ? AND choice IN ({",".join("?" * len(decided))})""",
-                (rid, prev["id"], *decided),
+                "INSERT INTO round_items (round_id, item_id) "
+                "SELECT ?, item_id FROM decisions WHERE round_id = ? AND choice = ?",
+                (rid, prev["id"], choice),
             )
         if "none" in carry:
             con.execute(

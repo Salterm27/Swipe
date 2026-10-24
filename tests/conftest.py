@@ -10,9 +10,9 @@ _TMPDIR = tempfile.mkdtemp(prefix="swipe-test-")
 os.environ["SWIPE_DATA"] = _TMPDIR
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-import app as swipe  # noqa: E402
-
 import pytest  # noqa: E402
+
+import app as swipe  # noqa: E402
 
 
 @pytest.fixture()

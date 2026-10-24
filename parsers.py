@@ -143,9 +143,12 @@ def parse_markdown(text):
 
 
 def _looks_like_header(row, body):
-    if not row or any(not c.strip() for c in row):
+    # blank cells are fine (pandas leaves the index column unnamed), but at
+    # least half must be named and none may look like data
+    named = [c for c in row if c.strip()]
+    if len(named) * 2 < len(row):
         return False
-    if any(_NUMBER.match(c) or _URL.match(c) for c in row):
+    if any(_NUMBER.match(c) or _URL.match(c) for c in named):
         return False
     # a header row is usually shorter than the data under it
     if body:
@@ -242,7 +245,8 @@ def parse_keyvalue(text):
     return records
 
 
-_BULLET = re.compile(r"^\s*(?:[-*•+]\s+|\d+[.)]\s+|\[[ xX]\]\s+|[-*]\s+\[[ xX]\]\s+)")
+# task-list checkboxes first, or "- [x] a" would only lose its "- "
+_BULLET = re.compile(r"^\s*(?:[-*+]\s+\[[ xX]\]\s+|\[[ xX]\]\s+|[-*•+]\s+|\d+[.)]\s+)")
 
 
 def parse_lines(text):
@@ -331,8 +335,10 @@ NAME_HINTS = {
     "title": r"^(title|name|label|item|heading|subject|product|term|word|question|task|idea)s?$",
     "image": r"(image|img|photo|picture|pic|poster|thumb|cover|avatar|logo|icon)",
     "link": r"^(url|link|href|website|web|homepage|permalink|source)s?$",
-    "description": r"(desc|summary|notes?$|body|text|content|details|overview|bio|about|comment|synopsis|plot|abstract)",
-    "subtitle": r"(subtitle|author|artist|category|type|brand|company|location|city|date|year|price|genre|tag|role|status|email)",
+    "description": r"(desc|summary|notes?$|body|text|content|details|overview|bio|about|comment"
+                   r"|synopsis|plot|abstract)",
+    "subtitle": r"(subtitle|author|artist|category|type|brand|company|location|city|date|year|price"
+                r"|genre|tag|role|status|email)",
     "key": r"^(id|key|uid|uuid|sku|isbn|slug|code|ref)$",
 }
 
@@ -423,4 +429,4 @@ def record_key(record, key_field):
     if key_field and record.get(key_field):
         return "k:" + record[key_field].strip().lower()
     blob = json.dumps(record, sort_keys=True, ensure_ascii=False)
-    return "h:" + hashlib.sha1(blob.encode()).hexdigest()[:16]
+    return "h:" + hashlib.sha1(blob.encode(), usedforsecurity=False).hexdigest()[:16]

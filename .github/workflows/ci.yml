@@ -7,6 +7,27 @@ on:
   workflow_dispatch:
 
 jobs:
+  # Static analysis: fast, and fails before any test runs.
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install -r requirements-dev.txt
+      - name: Ruff (lint + bugbear + bandit security rules)
+        run: ruff check --output-format=github .
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - run: npm ci
+      - name: ESLint (frontend script + JS tooling)
+        run: npx eslint .
+      - name: Deploy script syntax check
+        run: bash -n deploy/autodeploy.sh
+
   test:
     runs-on: ubuntu-latest
     steps:
@@ -16,16 +37,15 @@ jobs:
           python-version: "3.11"   # same as the Pi (Raspberry Pi OS bookworm)
       - name: Install dependencies
         run: pip install -r requirements-dev.txt
-      - name: API + parser tests
-        run: python -m pytest tests/ -v
-      - name: Frontend JS syntax check
-        run: |
-          sed -n '/<script>/,/<\/script>/p' static/index.html | sed '1d;$d' > /tmp/app.js
-          node --check /tmp/app.js
+      - name: API + parser tests (coverage gated)
+        run: python -m pytest tests/ -v --cov --cov-report=term-missing --cov-fail-under=95
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - run: npm ci
       - name: Frontend unit tests
         run: node --test tests/frontend.test.js
-      - name: Deploy script syntax check
-        run: bash -n deploy/autodeploy.sh
 
   # Browser tests: rendering, event wiring and async orchestration — the
   # things unit tests structurally cannot reach. Separate job so a slow
@@ -70,7 +90,7 @@ jobs:
   # ci-failure, updated with each failing run instead of spamming new ones.
   # (PR failures already show as a red X on the PR itself.)
   alert:
-    needs: [test, browser]
+    needs: [lint, test, browser]
     if: failure() && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     permissions:
