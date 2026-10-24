@@ -347,12 +347,22 @@ NAME_HINTS = {
     "link": r"^(url|link|href|website|web|homepage|permalink|source)s?$",
     "description": r"(desc|summary|notes?$|body|text|content|details|overview|bio|about|comment"
                    r"|synopsis|plot|abstract)",
-    "subtitle": r"(subtitle|author|artist|category|type|brand|company|location|city|date|year|price"
-                r"|genre|tag|role|status|email)",
+    "subtitle": r"(subtitle|author|artist|category|type|brand|company|location|city|neighbou?rhood"
+                r"|genre|tag|role|status|email|director|creator|kind)",
+    # the one short fact worth seeing at a glance, next to the title
+    "highlight": r"(price|cost|rent|year|date|rating|score|stars|size|area|age|duration|length|runtime"
+                 r"|rank|count|votes|distance|weight|salary|budget)",
     "key": r"^(id|key|uid|uuid|sku|isbn|slug|code|ref)$",
 }
 
-SLOTS = ("title", "subtitle", "image", "description", "link")
+SLOTS = ("title", "subtitle", "highlight", "image", "description", "link")
+
+# a field can hold several photos: "a.jpg, b.jpg" or a flattened JSON list
+_SEPARATORS = re.compile(r"[\s,|]+")
+
+
+def split_urls(value):
+    return [p for p in _SEPARATORS.split(value or "") if p]
 
 
 def field_stats(records, fields):
@@ -367,10 +377,15 @@ def field_stats(records, fields):
             "unique": len(set(filled)) / k,
             "avg_len": sum(len(v) for v in filled) / k,
             "url": sum(bool(_URL.match(v)) for v in filled) / k,
-            "image": sum(bool(_IMAGE_URL.match(v)) for v in filled) / k,
+            "image": sum(_all_images(v) for v in filled) / k,
             "number": sum(bool(_NUMBER.match(v)) for v in filled) / k,
         }
     return stats
+
+
+def _all_images(value):
+    parts = split_urls(value)
+    return bool(parts) and all(_IMAGE_URL.match(p) for p in parts)
 
 
 def _hint(slot, field):
@@ -380,9 +395,10 @@ def _hint(slot, field):
 def guess_mapping(records, fields=None):
     """Educated guess at which field goes in each card slot.
 
-    Returns {"title", "subtitle", "image", "description", "link": field|None,
-    "details": [remaining fields], "key": field|None}. Name hints win; the
-    shape of the values breaks ties and fills gaps.
+    Returns {"title", "subtitle", "highlight", "image", "description",
+    "link": field|None, "gallery": [more photo fields], "key": field|None}.
+    Name hints win; the shape of the values breaks ties and fills gaps.
+    Fields left out of every slot still show in the card's details view.
     """
     fields = fields or field_order(records)
     sample = records[:500]
@@ -398,8 +414,9 @@ def guess_mapping(records, fields=None):
         m[slot] = None
 
     useful = [f for f in fields if st[f]["fill"] > 0]
-    take("image", [f for f in useful if st[f]["image"] >= 0.5]
-         + [f for f in useful if _hint("image", f) and st[f]["url"] >= 0.5])
+    images = [f for f in useful if st[f]["image"] >= 0.5] \
+        + [f for f in useful if _hint("image", f) and st[f]["url"] >= 0.5 and st[f]["image"] < 0.5]
+    take("image", images)
     take("link", [f for f in useful if _hint("link", f) and st[f]["url"] >= 0.5]
          + [f for f in useful if st[f]["url"] >= 0.8 and st[f]["image"] < 0.5])
     text_fields = [f for f in useful if st[f]["url"] < 0.5]
@@ -411,9 +428,12 @@ def guess_mapping(records, fields=None):
     take("description", [f for f in text_fields if _hint("description", f)]
          + sorted((f for f in text_fields if st[f]["avg_len"] > 60),
                   key=lambda f: -st[f]["avg_len"]))
+    take("highlight", [f for f in text_fields if _hint("highlight", f) and st[f]["avg_len"] <= 30]
+         + [f for f in text_fields if st[f]["number"] >= 0.8 and st[f]["avg_len"] <= 16 and not _hint("key", f)])
     take("subtitle", [f for f in text_fields if _hint("subtitle", f)]
-         + [f for f in text_fields if st[f]["avg_len"] <= 60 and not _hint("key", f)])
-    m["details"] = [f for f in useful if f not in used and not _hint("key", f)][:8]
+         + [f for f in text_fields if st[f]["avg_len"] <= 60 and st[f]["number"] < 0.5 and not _hint("key", f)])
+    m["gallery"] = [f for f in images if f not in used]
+    used.update(m["gallery"])
     m["key"] = guess_key(sample if len(records) <= 500 else records, fields, m)
     return m
 
