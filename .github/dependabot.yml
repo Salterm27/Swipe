@@ -1,0 +1,24 @@
+# Weekly dependency PRs. Each one runs the full CI (lint, unit, browser),
+# so a green Dependabot PR is safe to merge — and the Pi auto-deploys it.
+version: 2
+updates:
+  - package-ecosystem: pip
+    directory: /
+    schedule: { interval: weekly, day: saturday }
+    open-pull-requests-limit: 5
+
+  # dev-only: test + lint tooling (the app itself ships no JS dependencies)
+  - package-ecosystem: npm
+    directory: /
+    schedule: { interval: weekly, day: saturday }
+    open-pull-requests-limit: 5
+    groups:
+      lint:
+        patterns: ["eslint", "@eslint/*", "eslint-plugin-*", "globals"]
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule: { interval: weekly, day: saturday }
+    groups:
+      actions:
+        patterns: ["*"]

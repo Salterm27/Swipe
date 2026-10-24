@@ -1,0 +1,964 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0f1115">
+<title>Swipe</title>
+<link rel="apple-touch-icon" href="/icon-180.png">
+<link rel="icon" type="image/png" href="/icon-180.png">
+<link rel="manifest" href='data:application/json,{"name":"Swipe","short_name":"Swipe","start_url":"/","display":"standalone","background_color":"%230f1115","theme_color":"%230f1115","icons":[{"src":"/icon-512.png","sizes":"512x512","type":"image/png"},{"src":"/icon-180.png","sizes":"180x180","type":"image/png"}]}'>
+<style>
+  :root {
+    --bg: #0f1115; --panel: #171a21; --panel2: #1f2430; --line: #2a3040;
+    --text: #e8eaf0; --muted: #8b93a7; --accent: #ff5a79;
+    --green: #3ecf8e; --red: #e5484d; --radius: 12px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  html, body { height: 100%; }
+  body {
+    background: var(--bg); color: var(--text);
+    font: 16px/1.45 -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  header {
+    position: sticky; top: 0; z-index: 10; background: rgba(15,17,21,.92);
+    backdrop-filter: blur(8px); padding: 12px 16px; display: flex;
+    align-items: center; gap: 10px; border-bottom: 1px solid #262b36;
+    padding-top: calc(12px + env(safe-area-inset-top));
+  }
+  header h1 { font-size: 18px; font-weight: 700; cursor: pointer; white-space: nowrap; }
+  header h1 span { color: var(--accent); }
+  header .crumb {
+    color: var(--muted); font-size: 14px; overflow: hidden; text-overflow: ellipsis;
+    white-space: nowrap; min-width: 0;
+  }
+  header .spacer { flex: 1; }
+  .iconbtn {
+    background: none; border: none; color: var(--muted); font-size: 20px;
+    cursor: pointer; padding: 6px; line-height: 1;
+  }
+  .iconbtn:hover { color: var(--text); }
+  main { padding: 16px; max-width: 720px; margin: 0 auto; }
+  h2 { font-size: 20px; margin-bottom: 4px; }
+  h3 { font-size: 15px; margin: 18px 0 8px; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: .04em; }
+  p.hint, .hint { color: var(--muted); font-size: 14px; }
+  .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .grow { flex: 1; min-width: 0; }
+
+  /* controls */
+  input[type=text], input:not([type]), textarea, select {
+    width: 100%; background: var(--panel); border: 1px solid var(--line);
+    border-radius: var(--radius); color: var(--text); padding: 11px 13px;
+    font: inherit; outline: none;
+  }
+  input:focus, textarea:focus, select:focus { border-color: var(--accent); }
+  textarea { min-height: 180px; resize: vertical; font: 14px/1.4 ui-monospace, Menlo, Consolas, monospace; }
+  label.field { display: block; margin: 12px 0; }
+  label.field > span { display: block; font-size: 13px; color: var(--muted); margin-bottom: 5px; }
+  .btn {
+    background: var(--panel2); border: 1px solid var(--line); color: var(--text);
+    border-radius: var(--radius); padding: 11px 16px; font: inherit; font-weight: 600;
+    cursor: pointer; text-decoration: none; display: inline-flex; align-items: center;
+    justify-content: center; gap: 6px;
+  }
+  .btn:hover { border-color: #3a4256; }
+  .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .btn.danger { color: var(--red); }
+  .btn.small { padding: 7px 11px; font-size: 14px; }
+  .btn:disabled { opacity: .5; cursor: default; }
+  .actions { display: flex; gap: 10px; margin-top: 20px; flex-wrap: wrap; }
+  .actions .btn { flex: 1; min-width: 140px; }
+  .panel { background: var(--panel); border: 1px solid #232835; border-radius: var(--radius); padding: 14px; margin: 12px 0; }
+  .error { color: var(--red); font-size: 14px; margin-top: 8px; min-height: 1em; }
+  .chip {
+    display: inline-flex; align-items: center; gap: 4px; padding: 3px 9px;
+    border-radius: 20px; font-size: 12.5px; font-weight: 600;
+    background: color-mix(in srgb, var(--c, var(--muted)) 18%, transparent);
+    color: var(--c, var(--muted)); white-space: nowrap;
+  }
+  .steps { display: flex; gap: 6px; margin-bottom: 18px; }
+  .steps div { flex: 1; height: 4px; border-radius: 2px; background: var(--panel2); }
+  .steps div.on { background: var(--accent); }
+
+  /* home */
+  .project {
+    display: block; width: 100%; text-align: left; background: var(--panel);
+    border: 1px solid #232835; border-radius: var(--radius); padding: 14px;
+    margin-bottom: 10px; color: var(--text); cursor: pointer; font: inherit;
+  }
+  .project:hover { border-color: #3a4256; }
+  .project .name { font-weight: 700; font-size: 17px; }
+  .project .sub { color: var(--muted); font-size: 13.5px; margin: 2px 0 8px; }
+  .bar { height: 6px; border-radius: 3px; background: var(--panel2); overflow: hidden; display: flex; }
+  .bar > i { display: block; height: 100%; }
+  .empty { text-align: center; color: var(--muted); padding: 48px 16px; }
+  .empty .big { font-size: 48px; margin-bottom: 8px; }
+
+  /* choice editor */
+  .choice-ed { display: grid; grid-template-columns: 56px 1fr 46px; gap: 8px; align-items: center; margin: 8px 0; }
+  .choice-ed .side { font-size: 12px; color: var(--muted); grid-column: 1 / -1; margin-top: 6px; }
+  .choice-ed input.icon { text-align: center; font-size: 20px; padding: 8px 4px; }
+  .choice-ed input[type=color] {
+    width: 46px; height: 46px; border: 1px solid var(--line); border-radius: var(--radius);
+    background: var(--panel); padding: 4px; cursor: pointer;
+  }
+  .picks { display: flex; gap: 4px; flex-wrap: wrap; grid-column: 1 / -1; }
+  .picks button {
+    background: var(--panel2); border: 1px solid transparent; border-radius: 8px;
+    font-size: 17px; width: 34px; height: 34px; cursor: pointer; color: var(--text);
+  }
+  .picks button:hover { border-color: var(--line); }
+
+  /* mapping */
+  .mapgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 0 12px; }
+  @media (max-width: 520px) { .mapgrid { grid-template-columns: 1fr; } }
+  .details-pick { display: flex; flex-wrap: wrap; gap: 6px; }
+  .details-pick label {
+    display: inline-flex; gap: 5px; align-items: center; background: var(--panel2);
+    padding: 5px 10px; border-radius: 20px; font-size: 13.5px; cursor: pointer;
+  }
+  .preview-wrap { display: flex; flex-direction: column; align-items: center; gap: 10px; margin: 8px 0 4px; }
+  .preview-wrap .card { position: relative; width: min(100%, 360px); min-height: 200px; max-height: 480px; cursor: default; }
+
+  /* deck */
+  /* viewport minus header (~58px) and main's own 16px top/bottom padding */
+  .swipe-main { display: flex; flex-direction: column; height: calc(100dvh - 90px - env(safe-area-inset-top)); padding-bottom: calc(12px + env(safe-area-inset-bottom)); }
+  .progress { display: flex; align-items: center; gap: 10px; font-size: 13.5px; color: var(--muted); margin-bottom: 10px; }
+  .progress .bar { flex: 1; }
+  .deck { position: relative; flex: 1; min-height: 300px; }
+  .card {
+    position: absolute; inset: 0; background: var(--panel); border: 1px solid #262c3a;
+    border-radius: 18px; overflow: hidden; display: flex; flex-direction: column;
+    box-shadow: 0 10px 30px rgba(0,0,0,.35); touch-action: none; user-select: none;
+    cursor: grab; will-change: transform;
+  }
+  .card.behind { transform: scale(.95) translateY(12px); opacity: .6; pointer-events: none; }
+  .card.dragging { cursor: grabbing; transition: none; }
+  .card.settle { transition: transform .25s ease, opacity .25s ease; }
+  .card.flying { z-index: 5; pointer-events: none; }
+  .card .media { flex: 0 0 auto; height: 46%; background: var(--panel2); }
+  .card .media img { width: 100%; height: 100%; object-fit: cover; display: block; pointer-events: none; }
+  .card .body { padding: 16px 18px; overflow-y: auto; flex: 1; display: flex; flex-direction: column; gap: 8px; }
+  .card .title { font-size: 22px; font-weight: 700; line-height: 1.2; overflow-wrap: anywhere; }
+  .card .subtitle { color: var(--accent); font-weight: 600; font-size: 15px; overflow-wrap: anywhere; }
+  .card .desc { color: #c5cad6; font-size: 15px; white-space: pre-line; overflow-wrap: anywhere; }
+  .card .link { font-size: 14px; color: #7aa7ff; overflow-wrap: anywhere; }
+  .card dl { display: grid; grid-template-columns: auto 1fr; gap: 3px 12px; font-size: 13.5px; margin-top: 4px; }
+  .card dt { color: var(--muted); }
+  .card dd { overflow-wrap: anywhere; }
+  .card .hist { display: flex; gap: 6px; flex-wrap: wrap; }
+  .card .placeholder { color: var(--muted); font-style: italic; }
+  .stamp {
+    position: absolute; top: 22px; padding: 6px 14px; border: 3px solid var(--c);
+    color: var(--c); border-radius: 10px; font-size: 26px; font-weight: 800;
+    text-transform: uppercase; opacity: 0; pointer-events: none; background: rgba(15,17,21,.6);
+    max-width: 70%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .stamp.right { left: 20px; transform: rotate(-12deg); }
+  .stamp.left { right: 20px; transform: rotate(12deg); }
+  .stamp.unsure { left: 50%; top: auto; bottom: 40px; transform: translateX(-50%); }
+  .controls { display: flex; justify-content: center; align-items: center; gap: 18px; padding-top: 14px; }
+  .cbtn {
+    width: 64px; height: 64px; border-radius: 50%; border: 2px solid var(--c);
+    background: var(--panel); color: var(--c); font-size: 28px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center; transition: transform .1s;
+  }
+  .cbtn:active { transform: scale(.92); }
+  .cbtn.small { width: 48px; height: 48px; font-size: 20px; }
+  .cbtn.undo { --c: var(--muted); width: 42px; height: 42px; font-size: 18px; border-width: 1px; }
+  .keys { text-align: center; color: #5d6578; font-size: 12px; margin-top: 8px; }
+  @media (hover: none) { .keys { display: none; } }
+  .done { text-align: center; padding: 40px 10px; }
+  .done .big { font-size: 56px; }
+
+  /* summary */
+  .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px; }
+  .tile {
+    background: var(--panel); border: 1px solid #232835; border-radius: var(--radius);
+    padding: 12px; cursor: pointer; text-align: left; color: var(--text); font: inherit;
+  }
+  .tile.on { border-color: var(--c, var(--accent)); }
+  .tile .n { font-size: 26px; font-weight: 800; color: var(--c, var(--text)); }
+  .tile .l { font-size: 13px; color: var(--muted); }
+  .items { margin-top: 14px; }
+  .itemrow {
+    display: flex; align-items: center; gap: 10px; padding: 10px 0;
+    border-bottom: 1px solid #1d212b;
+  }
+  .itemrow img { width: 44px; height: 44px; object-fit: cover; border-radius: 8px; background: var(--panel2); flex: 0 0 auto; }
+  .itemrow .t { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .itemrow .s { font-size: 13px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .itemrow .pick { display: flex; gap: 4px; flex: 0 0 auto; }
+  .itemrow .pick button {
+    width: 34px; height: 34px; border-radius: 50%; border: 1px solid var(--line);
+    background: none; color: var(--muted); cursor: pointer; font-size: 15px;
+  }
+  .itemrow .pick button.on { background: var(--c); border-color: var(--c); color: #fff; }
+  .seg { display: flex; gap: 6px; flex-wrap: wrap; margin: 6px 0; }
+  .seg label {
+    display: inline-flex; gap: 6px; align-items: center; background: var(--panel2);
+    padding: 7px 12px; border-radius: 20px; font-size: 14px; cursor: pointer;
+  }
+  .toast {
+    position: fixed; left: 50%; bottom: calc(24px + env(safe-area-inset-bottom)); transform: translateX(-50%);
+    background: #2a3040; color: var(--text); padding: 10px 16px; border-radius: 20px;
+    font-size: 14px; z-index: 50; box-shadow: 0 6px 20px rgba(0,0,0,.4);
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1 id="home-link">Sw<span>ipe</span></h1>
+  <div class="crumb" id="crumb"></div>
+  <div class="spacer"></div>
+  <div id="header-actions" class="row"></div>
+</header>
+<main id="view"></main>
+
+<script>
+/* ============================================================ helpers */
+
+const DEFAULT_CHOICES = {
+  left:   { label: 'No',       icon: '✕', color: '#e5484d' },
+  right:  { label: 'Yes',      icon: '✓', color: '#3ecf8e' },
+  unsure: { label: 'Not sure', icon: '?', color: '#8b93a7' },
+};
+const CHOICE_ORDER = ['left', 'unsure', 'right'];
+const ICON_PICKS = ['✓', '✕', '?', '❤️', '👍', '👎', '⭐', '🔥', '🗑️', '📌', '⏭️', '💤', '🤔', '💰'];
+const SLOTS = [
+  ['title', 'Title'], ['subtitle', 'Subtitle'], ['image', 'Image'],
+  ['description', 'Description'], ['link', 'Link'],
+];
+const SWIPE_THRESHOLD = 90;   // px of drag that commits a decision
+const PROJECT_ID = /^[0-9a-f]{12}$/;   // same shape app.py generates
+
+/** Tiny hyperscript: h('div', {class: 'x', onclick}, child, 'text'). Text is
+ *  always set as text, never parsed as HTML — list data is user content. */
+function h(tag, attrs, ...kids) {
+  const el = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs || {})) {
+    if (v == null || v === false) continue;
+    if (k.startsWith('on')) el.addEventListener(k.slice(2), v);
+    else if (k === 'style' && typeof v === 'object') Object.assign(el.style, v);
+    else if (k === 'vars') for (const [n, val] of Object.entries(v)) el.style.setProperty(n, val);
+    else if (k in el && k !== 'list') el[k] = v;
+    else el.setAttribute(k, v === true ? '' : v);
+  }
+  for (const kid of kids.flat(Infinity)) {
+    if (kid == null || kid === false) continue;
+    el.appendChild(typeof kid === 'object' ? kid : document.createTextNode(String(kid)));
+  }
+  return el;
+}
+
+async function api(path, opts = {}) {
+  const init = { method: opts.method || 'GET', headers: {} };
+  if (opts.body !== undefined) {
+    init.headers['Content-Type'] = 'application/json';
+    init.body = JSON.stringify(opts.body);
+  }
+  const r = await fetch(path, init);
+  const data = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(data.error || `request failed (${r.status})`);
+  return data;
+}
+
+/** Only let http(s) through as a link, plus data:image for images. */
+function safeUrl(v, { image = false } = {}) {
+  const s = String(v || '').trim();
+  if (/^https?:\/\/\S+$/i.test(s)) return s;
+  if (image && /^data:image\/[a-z+.-]+[;,]/i.test(s)) return s;
+  return null;
+}
+
+function choicesOf(p) { return { ...DEFAULT_CHOICES, ...((p && p.choices) || {}) }; }
+
+/** What a card shows for one record under a mapping — pure, so the wizard
+ *  preview and the real deck can't drift apart. */
+function cardModel(data, mapping) {
+  const get = f => (f && data[f] != null ? String(data[f]).trim() : '');
+  const m = mapping || {};
+  const title = get(m.title) || Object.values(data).map(String).find(v => v.trim()) || '(empty)';
+  return {
+    title,
+    subtitle: get(m.subtitle),
+    image: safeUrl(get(m.image), { image: true }),
+    description: get(m.description),
+    link: safeUrl(get(m.link)),
+    details: (m.details || []).map(f => [f, get(f)]).filter(([, v]) => v),
+  };
+}
+
+/** Which way a drag points once it's past the threshold (or null). */
+function dragChoice(dx, dy, threshold = SWIPE_THRESHOLD) {
+  if (-dy > threshold && Math.abs(dy) > Math.abs(dx)) return 'unsure';
+  if (dx > threshold) return 'right';
+  if (dx < -threshold) return 'left';
+  return null;
+}
+
+function plural(n, word) { return `${n} ${word}${n === 1 ? '' : 's'}`; }
+
+function toast(msg) {
+  const t = h('div', { class: 'toast' }, msg);
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), 2600);
+}
+
+function choiceChip(choices, c, prefix = '') {
+  const ch = choices[c];
+  return h('span', { class: 'chip', vars: { '--c': ch.color } }, `${prefix}${ch.icon} ${ch.label}`);
+}
+
+function statsBar(stats, choices) {
+  const bar = h('div', { class: 'bar' });
+  if (!stats || !stats.total) return bar;
+  for (const c of ['right', 'unsure', 'left']) {
+    const n = stats.counts[c] || 0;
+    if (n) bar.appendChild(h('i', { style: { width: `${(100 * n) / stats.total}%`, background: choices[c].color } }));
+  }
+  return bar;
+}
+
+function readFile(file) {
+  return new Promise((res, rej) => {
+    const fr = new FileReader();
+    fr.onload = () => res(fr.result);
+    fr.onerror = () => rej(fr.error);
+    fr.readAsText(file);
+  });
+}
+
+/* ============================================================ card */
+
+function renderCard(item, project, { withStamps = false } = {}) {
+  const choices = choicesOf(project);
+  const m = cardModel(item.data, project.mapping);
+  const card = h('div', { class: 'card' });
+  if (m.image) {
+    const img = h('img', { src: m.image, alt: '', loading: 'lazy', referrerPolicy: 'no-referrer', draggable: false });
+    img.onerror = () => img.parentNode && img.parentNode.remove();
+    card.appendChild(h('div', { class: 'media' }, img));
+  }
+  const body = h('div', { class: 'body' },
+    item.history && item.history.length
+      ? h('div', { class: 'hist' }, item.history.map(x => choiceChip(choices, x.choice, `R${x.round} `)))
+      : null,
+    h('div', { class: 'title' }, m.title),
+    m.subtitle ? h('div', { class: 'subtitle' }, m.subtitle) : null,
+    m.description ? h('div', { class: 'desc' }, m.description) : null,
+    m.details.length ? h('dl', {}, m.details.map(([k, v]) => [h('dt', {}, k), h('dd', {}, v)])) : null,
+    m.link ? h('a', { class: 'link', href: m.link, target: '_blank', rel: 'noopener noreferrer',
+                      onpointerdown: e => e.stopPropagation() }, m.link) : null,
+  );
+  card.appendChild(body);
+  if (withStamps) {
+    for (const c of ['left', 'right', 'unsure']) {
+      card.appendChild(h('div', { class: `stamp ${c}`, 'data-stamp': c, vars: { '--c': choices[c].color } },
+        `${choices[c].icon} ${choices[c].label}`));
+    }
+  }
+  return card;
+}
+
+/* ============================================================ layout */
+
+const view = () => document.getElementById('view');
+/** Replace the page body; null/false children are skipped (replaceChildren
+ *  would print them as the text "null"). */
+const show = (...nodes) => view().replaceChildren(...nodes.flat().filter(n => n != null && n !== false));
+
+function setHeader(crumb, actions = []) {
+  document.getElementById('crumb').textContent = crumb || '';
+  const box = document.getElementById('header-actions');
+  box.replaceChildren(...actions);
+}
+
+function go(hash) { location.hash = hash; }
+
+/* ============================================================ home */
+
+async function viewHome() {
+  setHeader('', [h('button', { class: 'btn small primary', onclick: () => go('#/new') }, '＋ New')]);
+  const box = view();
+  box.replaceChildren(h('p', { class: 'hint' }, 'Loading…'));
+  const projects = await api('/api/projects');
+  if (!projects.length) {
+    box.replaceChildren(h('div', { class: 'empty' },
+      h('div', { class: 'big' }, '🃏'),
+      h('h2', {}, 'Turn any list into a deck'),
+      h('p', { class: 'hint', style: { margin: '6px 0 18px' } },
+        'Paste a list, decide what left and right mean, and swipe through it.'),
+      h('button', { class: 'btn primary', onclick: () => go('#/new') }, '＋ Create your first project')));
+    return;
+  }
+  box.replaceChildren(...projects.map(p => {
+    const choices = choicesOf(p);
+    const r = p.round || { number: 1, total: 0, decided: 0, remaining: 0, counts: {} };
+    return h('button', { class: 'project', 'data-project': p.id,
+                         onclick: () => go(r.remaining ? `#/p/${p.id}` : `#/p/${p.id}/summary`) },
+      h('div', { class: 'name' }, p.name),
+      h('div', { class: 'sub' },
+        `Round ${r.number} · ${r.decided}/${r.total} decided`,
+        r.remaining ? '' : ' · ✓ round complete'),
+      statsBar(r, choices));
+  }));
+}
+
+/* ============================================================ choice editor */
+
+function choiceEditor(choices) {
+  const box = h('div', {});
+  const sides = { left: '← Swipe left', right: 'Swipe right →', unsure: '↑ Swipe up (don’t know)' };
+  for (const c of ['right', 'left', 'unsure']) {
+    const ch = choices[c];
+    const icon = h('input', { class: 'icon', value: ch.icon, maxLength: 8, 'aria-label': `${c} icon`,
+                              oninput: () => { ch.icon = icon.value; } });
+    const label = h('input', { value: ch.label, maxLength: 40, 'aria-label': `${c} label`, name: `label-${c}`,
+                               oninput: () => { ch.label = label.value; } });
+    const color = h('input', { type: 'color', value: ch.color, 'aria-label': `${c} color`,
+                               oninput: () => { ch.color = color.value; } });
+    box.appendChild(h('div', { class: 'choice-ed' },
+      h('div', { class: 'side' }, sides[c]),
+      icon, label, color,
+      h('div', { class: 'picks' }, ICON_PICKS.map(p =>
+        h('button', { type: 'button', onclick: () => { icon.value = ch.icon = p; } }, p)))));
+  }
+  return box;
+}
+
+/* ============================================================ mapping editor */
+
+/** Field-to-slot pickers with a live card preview. Mutates `mapping`. */
+function mappingEditor({ mapping, fields, sample, project, keyField, onKeyField }) {
+  let idx = 0;
+  const preview = h('div', { class: 'preview-wrap' });
+  const counter = h('span', { class: 'hint' });
+  const draw = () => {
+    const rec = sample[idx] || {};
+    const card = renderCard({ data: rec, history: [] }, { ...project, mapping });
+    preview.firstChild ? preview.replaceChild(card, preview.firstChild) : preview.prepend(card);
+    counter.textContent = `Sample ${idx + 1} of ${sample.length}`;
+  };
+  preview.appendChild(h('div', {}));
+  preview.appendChild(h('div', { class: 'row' },
+    h('button', { type: 'button', class: 'btn small', onclick: () => { idx = (idx - 1 + sample.length) % sample.length; draw(); } }, '‹'),
+    counter,
+    h('button', { type: 'button', class: 'btn small', onclick: () => { idx = (idx + 1) % sample.length; draw(); } }, '›')));
+
+  const opt = (f, sel) => h('option', { value: f, selected: f === sel }, f);
+  const grid = h('div', { class: 'mapgrid' }, SLOTS.map(([slot, name]) => {
+    const s = h('select', { name: `slot-${slot}`, onchange: () => { mapping[slot] = s.value || null; draw(); } },
+      h('option', { value: '' }, '— none —'), fields.map(f => opt(f, mapping[slot])));
+    return h('label', { class: 'field' }, h('span', {}, name), s);
+  }));
+
+  const details = h('div', { class: 'details-pick' }, fields.map(f => {
+    const cb = h('input', { type: 'checkbox', checked: (mapping.details || []).includes(f), onchange: () => {
+      const set = new Set(mapping.details || []);
+      cb.checked ? set.add(f) : set.delete(f);
+      mapping.details = fields.filter(x => set.has(x));
+      draw();
+    } });
+    return h('label', {}, cb, f);
+  }));
+
+  let keyBox = null;
+  if (onKeyField) {
+    const ks = h('select', { name: 'key-field', onchange: () => onKeyField(ks.value || null) },
+      h('option', { value: '' }, 'The whole item (exact match)'), fields.map(f => opt(f, keyField)));
+    keyBox = h('label', { class: 'field' },
+      h('span', {}, 'Match items by — used when you add more data in a later round'), ks);
+  }
+
+  draw();
+  return h('div', {}, preview, grid,
+    h('label', { class: 'field' }, h('span', {}, 'Also show these fields'), details),
+    keyBox);
+}
+
+/* ============================================================ new project */
+
+let draft = null;
+function newDraft() {
+  return { step: 1, name: '', choices: structuredClone(DEFAULT_CHOICES), text: '', filename: null,
+           format: null, parsed: null, mapping: null, key_field: null };
+}
+
+function viewNew() {
+  if (!draft) draft = newDraft();
+  setHeader('New project');
+  const steps = h('div', { class: 'steps' }, [1, 2, 3].map(n => h('div', { class: n <= draft.step ? 'on' : '' })));
+  const error = h('div', { class: 'error' });
+
+  if (draft.step === 1) {
+    const name = h('input', { name: 'name', value: draft.name, placeholder: 'e.g. Baby names, Apartments, Books to read',
+                              oninput: () => { draft.name = name.value; } });
+    show(steps,
+      h('h2', {}, 'What are you deciding?'),
+      h('label', { class: 'field' }, h('span', {}, 'Project name'), name),
+      h('h3', {}, 'What does each swipe mean?'),
+      choiceEditor(draft.choices),
+      error,
+      h('div', { class: 'actions' },
+        h('button', { class: 'btn', onclick: () => { draft = null; go('#/'); } }, 'Cancel'),
+        h('button', { class: 'btn primary', 'data-next': 1, onclick: () => {
+          if (!draft.name.trim()) { error.textContent = 'Give it a name first.'; return; }
+          draft.step = 2; viewNew();
+        } }, 'Next: add the list →')));
+    name.focus();
+    return;
+  }
+
+  if (draft.step === 2) {
+    const ta = h('textarea', { name: 'list', value: draft.text, placeholder:
+      'Paste anything list-like:\n\n• one item per line\n• CSV or cells copied from a spreadsheet\n• JSON / JSON lines\n• a markdown table\n• "key: value" blocks separated by blank lines',
+      oninput: () => { draft.text = ta.value; draft.filename = null; } });
+    const file = h('input', { type: 'file', accept: '.csv,.tsv,.txt,.json,.jsonl,.ndjson,.md,text/*,application/json',
+      style: { display: 'none' }, onchange: async () => {
+        const f = file.files[0];
+        if (!f) return;
+        draft.text = ta.value = await readFile(f);
+        draft.filename = f.name;
+      } });
+    const read = async () => {
+      error.textContent = '';
+      try {
+        draft.parsed = await api('/api/parse', { method: 'POST',
+          body: { text: draft.text, filename: draft.filename, format: draft.format } });
+        draft.mapping = { ...draft.parsed.mapping };
+        draft.key_field = draft.parsed.key_field;
+        draft.step = 3; viewNew();
+      } catch (e) { error.textContent = e.message; }
+    };
+    show(steps,
+      h('h2', {}, 'Add your list'),
+      h('p', { class: 'hint', style: { marginBottom: '12px' } }, 'Swipe works out the format by itself — you can correct it on the next step.'),
+      ta,
+      h('div', { class: 'row', style: { marginTop: '10px' } },
+        h('button', { class: 'btn small', onclick: () => file.click() }, '📄 Load a file'), file),
+      error,
+      h('div', { class: 'actions' },
+        h('button', { class: 'btn', onclick: () => { draft.step = 1; viewNew(); } }, '← Back'),
+        h('button', { class: 'btn primary', 'data-next': 2, onclick: read }, 'Next: lay out the card →')));
+    return;
+  }
+
+  // step 3: format check + mapping
+  const p = draft.parsed;
+  const fmtSel = h('select', { name: 'format', onchange: async () => {
+    error.textContent = '';
+    try {
+      const next = await api('/api/parse', { method: 'POST',
+        body: { text: draft.text, filename: draft.filename, format: fmtSel.value } });
+      draft.format = fmtSel.value;
+      draft.parsed = next;
+      draft.mapping = { ...next.mapping };
+      draft.key_field = next.key_field;
+      viewNew();
+    } catch (e) { error.textContent = e.message; fmtSel.value = p.format; }
+  } });
+  api('/api/formats').then(fs => fs.forEach(f =>
+    fmtSel.appendChild(h('option', { value: f.id, selected: f.id === p.format }, f.label))));
+  const create = async (btn) => {
+    btn.disabled = true;
+    error.textContent = '';
+    try {
+      const proj = await api('/api/projects', { method: 'POST', body: {
+        name: draft.name, choices: draft.choices, text: draft.text, filename: draft.filename,
+        format: p.format, mapping: draft.mapping, key_field: draft.key_field } });
+      draft = null;
+      go(`#/p/${proj.id}`);
+    } catch (e) { error.textContent = e.message; btn.disabled = false; }
+  };
+  show(steps,
+    h('h2', {}, 'Lay out the card'),
+    h('p', { class: 'hint' }, `Found ${plural(p.count, 'item')} with ${plural(p.fields.length, 'field')}.`,
+      p.truncated ? ' (Only the first 20,000 are kept.)' : '',
+      ' This is my best guess — change anything that looks off.'),
+    h('label', { class: 'field' }, h('span', {}, 'Read as'), fmtSel),
+    mappingEditor({ mapping: draft.mapping, fields: p.fields, sample: p.sample,
+                    project: { choices: draft.choices }, keyField: draft.key_field,
+                    onKeyField: v => { draft.key_field = v; } }),
+    error,
+    h('div', { class: 'actions' },
+      h('button', { class: 'btn', onclick: () => { draft.step = 2; viewNew(); } }, '← Back'),
+      h('button', { class: 'btn primary', 'data-create': 1, onclick: e => create(e.currentTarget) }, 'Start swiping 🃏')));
+}
+
+/* ============================================================ swipe */
+
+// `gone`: ids swiped on this device, so a refill that raced a save can't
+// bring a card back. `filling`: one refill at a time.
+const deck = { pid: null, project: null, queue: [], stats: null, saving: Promise.resolve(), busy: false,
+               gone: new Set(), filling: null };
+
+async function viewSwipe(pid) {
+  const project = await api(`/api/projects/${pid}`);
+  Object.assign(deck, { pid, project, queue: [], stats: project.round, saving: Promise.resolve(),
+                       gone: new Set(), filling: null });
+  setHeader(project.name, [
+    h('button', { class: 'iconbtn', title: 'Results', 'aria-label': 'Results', onclick: () => go(`#/p/${pid}/summary`) }, '📊'),
+    h('button', { class: 'iconbtn', title: 'Settings', 'aria-label': 'Settings', onclick: () => go(`#/p/${pid}/settings`) }, '⚙'),
+  ]);
+  const choices = choicesOf(project);
+  const main = h('div', { class: 'swipe-main' },
+    h('div', { class: 'progress' }, h('span', { id: 'round-label' }), h('div', { class: 'bar', id: 'pbar' }), h('span', { id: 'pcount' })),
+    h('div', { class: 'deck', id: 'deck' }),
+    h('div', { class: 'controls', id: 'controls' },
+      h('button', { class: 'cbtn undo', title: 'Undo (Backspace)', 'aria-label': 'Undo', onclick: undo }, '↶'),
+      CHOICE_ORDER.map(c => h('button', {
+        class: `cbtn${c === 'unsure' ? ' small' : ''}`, 'data-choice': c, title: choices[c].label,
+        'aria-label': choices[c].label, vars: { '--c': choices[c].color }, onclick: () => decide(c) }, choices[c].icon))),
+    h('div', { class: 'keys' }, `← ${choices.left.label} · ↑ ${choices.unsure.label} · → ${choices.right.label} · ⌫ undo`));
+  show(main);
+  await refill();
+  drawDeck();
+}
+
+function refill() {
+  if (deck.queue.length >= 4) return Promise.resolve();
+  if (!deck.filling) {
+    deck.filling = (async () => {
+      await deck.saving;
+      const res = await api(`/api/projects/${deck.pid}/queue?limit=15`);
+      const have = new Set(deck.queue.map(i => i.id));
+      deck.queue.push(...res.items.filter(i => !have.has(i.id) && !deck.gone.has(i.id)));
+      deck.round = res.round;
+    })().finally(() => { deck.filling = null; });
+  }
+  return deck.filling;
+}
+
+function drawProgress() {
+  const s = deck.stats;
+  const choices = choicesOf(deck.project);
+  const label = document.getElementById('round-label');
+  if (!label) return;
+  label.textContent = `Round ${deck.round || deck.project.round.number}`;
+  document.getElementById('pbar').replaceWith(Object.assign(statsBar(s, choices), { id: 'pbar' }));
+  document.getElementById('pcount').textContent = s ? `${s.decided} / ${s.total}` : '';
+}
+
+function drawDeck() {
+  const box = document.getElementById('deck');
+  if (!box) return;
+  drawProgress();
+  // cards still animating out stay on top of whatever comes next
+  box.replaceChildren(...box.querySelectorAll('.flying'));
+  const controls = document.getElementById('controls');
+  if (!deck.queue.length) {
+    controls.style.visibility = deck.stats && deck.stats.decided ? 'visible' : 'hidden';
+    controls.querySelectorAll('[data-choice]').forEach(b => { b.disabled = true; });
+    box.prepend(h('div', { class: 'done' },
+      h('div', { class: 'big' }, '🎉'),
+      h('h2', {}, `Round ${deck.round} done`),
+      h('p', { class: 'hint', style: { margin: '6px 0 18px' } },
+        'See what you picked, export it, or start another round.'),
+      h('button', { class: 'btn primary', onclick: () => go(`#/p/${deck.pid}/summary`) }, '📊 See results')));
+    return;
+  }
+  controls.style.visibility = 'visible';
+  controls.querySelectorAll('[data-choice]').forEach(b => { b.disabled = false; });
+  if (deck.queue[1]) {
+    const back = renderCard(deck.queue[1], deck.project);
+    back.classList.add('behind');
+    box.prepend(back);
+  }
+  const top = renderCard(deck.queue[0], deck.project, { withStamps: true });
+  top.dataset.item = deck.queue[0].id;
+  attachDrag(top);
+  box.insertBefore(top, box.querySelector('.flying'));
+}
+
+function setStamps(card, dx, dy) {
+  const want = dragChoice(dx, dy, 1);
+  const strength = Math.min(1, Math.max(Math.abs(dx), -dy) / SWIPE_THRESHOLD);
+  card.querySelectorAll('[data-stamp]').forEach(s => {
+    s.style.opacity = s.dataset.stamp === want ? strength : 0;
+  });
+}
+
+function attachDrag(card) {
+  let start = null;
+  card.addEventListener('pointerdown', e => {
+    if (e.button !== 0 || deck.busy) return;
+    start = { x: e.clientX, y: e.clientY, id: e.pointerId };
+    card.setPointerCapture(e.pointerId);
+    card.classList.add('dragging');
+  });
+  card.addEventListener('pointermove', e => {
+    if (!start || e.pointerId !== start.id) return;
+    const dx = e.clientX - start.x, dy = e.clientY - start.y;
+    card.style.transform = `translate(${dx}px, ${dy}px) rotate(${dx / 18}deg)`;
+    setStamps(card, dx, dy);
+  });
+  const end = e => {
+    if (!start || e.pointerId !== start.id) return;
+    const dx = e.clientX - start.x, dy = e.clientY - start.y;
+    start = null;
+    card.classList.remove('dragging');
+    const c = dragChoice(dx, dy);
+    if (c) { decide(c, { dx, dy }); return; }
+    card.classList.add('settle');
+    card.style.transform = '';
+    setStamps(card, 0, 0);
+  };
+  card.addEventListener('pointerup', end);
+  card.addEventListener('pointercancel', end);
+}
+
+function flyOut(card, choice, from) {
+  card.classList.add('flying');
+  delete card.dataset.item;
+  const w = window.innerWidth;
+  const to = choice === 'unsure' ? { x: (from && from.dx) || 0, y: -window.innerHeight }
+                                 : { x: choice === 'right' ? w * 1.2 : -w * 1.2, y: (from && from.dy) || 0 };
+  setStamps(card, choice === 'unsure' ? 0 : to.x, choice === 'unsure' ? -999 : 0);
+  card.classList.add('settle');
+  card.style.transform = `translate(${to.x}px, ${to.y}px) rotate(${to.x / 18}deg)`;
+  card.style.opacity = '0';
+  setTimeout(() => card.remove(), 260);
+}
+
+/** Never blocks on the animation: the next card is live at once, so fast
+ *  key presses are all counted. Saves go out strictly in order. */
+async function decide(choice, from) {
+  if (deck.busy || !deck.queue.length) return;
+  const item = deck.queue.shift();
+  deck.gone.add(item.id);
+  const card = document.querySelector(`.card[data-item="${item.id}"]`);
+  // optimistic: count it now, save in order in the background
+  deck.stats = { ...deck.stats, decided: deck.stats.decided + 1, remaining: deck.stats.remaining - 1,
+                 counts: { ...deck.stats.counts, [choice]: (deck.stats.counts[choice] || 0) + 1 } };
+  const ticket = deck.saves = (deck.saves || 0) + 1;
+  deck.saving = deck.saving.then(() =>
+    api(`/api/projects/${deck.pid}/decisions`, { method: 'POST', body: { item_id: item.id, choice } })
+      // only the newest save knows the true totals; older replies are stale
+      .then(r => { if (deck.saves === ticket) { deck.stats = r.stats; drawProgress(); } })
+      .catch(e => { toast(`Couldn’t save: ${e.message}`); deck.gone.delete(item.id); deck.queue.unshift(item); drawDeck(); }));
+  if (card) flyOut(card, choice, from);
+  drawDeck();
+  if (deck.queue.length < 4) { await refill(); drawDeck(); }
+}
+
+async function undo() {
+  if (deck.busy) return;
+  deck.busy = true;
+  try {
+    await deck.saving;
+    const r = await api(`/api/projects/${deck.pid}/undo`, { method: 'POST' });
+    deck.gone.delete(r.item.id);
+    deck.queue = [r.item, ...deck.queue.filter(i => i.id !== r.item.id)];
+    deck.stats = r.stats;
+  } catch (e) { toast(e.message === 'nothing to undo' ? 'Nothing to undo' : e.message); }
+  deck.busy = false;
+  drawDeck();
+}
+
+document.addEventListener('keydown', e => {
+  if (!document.getElementById('deck') || e.target.matches('input, textarea, select')) return;
+  const map = { ArrowLeft: 'left', ArrowRight: 'right', ArrowUp: 'unsure', ArrowDown: 'unsure' };
+  if (map[e.key]) { e.preventDefault(); decide(map[e.key]); }
+  else if (e.key === 'Backspace' || (e.key === 'z' && (e.metaKey || e.ctrlKey))) { e.preventDefault(); undo(); }
+});
+
+/* ============================================================ summary */
+
+async function viewSummary(pid, roundNo) {
+  const project = await api(`/api/projects/${pid}`);
+  const choices = choicesOf(project);
+  const current = project.round.number;
+  const number = roundNo || current;
+  const isCurrent = number === current;
+  const res = await api(`/api/projects/${pid}/items?round=${number}`);
+  const items = res.items;
+  setHeader(project.name, [
+    h('button', { class: 'iconbtn', title: 'Settings', 'aria-label': 'Settings', onclick: () => go(`#/p/${pid}/settings`) }, '⚙'),
+  ]);
+
+  let filter = null;
+  const counts = { left: 0, right: 0, unsure: 0, none: 0 };
+  items.forEach(i => { counts[i.choice || 'none']++; });
+
+  const list = h('div', { class: 'items' });
+  const tiles = h('div', { class: 'tiles' });
+  const drawTiles = () => {
+    const tile = (key, n, label, color) => h('button', {
+      class: `tile${filter === key ? ' on' : ''}`, 'data-tile': key, vars: color ? { '--c': color } : {},
+      onclick: () => { filter = filter === key ? null : key; drawTiles(); drawList(); } },
+      h('div', { class: 'n' }, n), h('div', { class: 'l' }, label));
+    tiles.replaceChildren(
+      ...['right', 'unsure', 'left'].map(c => tile(c, counts[c], `${choices[c].icon} ${choices[c].label}`, choices[c].color)),
+      ...(counts.none ? [tile('none', counts.none, 'Not decided yet')] : []));
+  };
+  const setChoice = async (item, c) => {
+    try {
+      await api(`/api/projects/${pid}/decisions`, { method: 'POST', body: { item_id: item.id, choice: c } });
+      counts[item.choice || 'none']--; counts[c]++;
+      item.choice = c;
+      drawTiles(); drawList();
+    } catch (e) { toast(e.message); }
+  };
+  const drawList = () => {
+    const shown = items.filter(i => !filter || (i.choice || 'none') === filter);
+    list.replaceChildren(...shown.map(i => {
+      const m = cardModel(i.data, project.mapping);
+      return h('div', { class: 'itemrow', 'data-row': i.id },
+        m.image ? h('img', { src: m.image, alt: '', loading: 'lazy', referrerPolicy: 'no-referrer',
+                             onerror: e => { e.target.style.visibility = 'hidden'; } }) : null,
+        h('div', { class: 'grow' },
+          h('div', { class: 't' }, m.title),
+          h('div', { class: 's' }, [m.subtitle, ...i.history.map(x => `R${x.round} ${choices[x.choice].icon}`)].filter(Boolean).join(' · '))),
+        isCurrent
+          ? h('div', { class: 'pick' }, CHOICE_ORDER.map(c => h('button', {
+              class: i.choice === c ? 'on' : '', title: choices[c].label, vars: { '--c': choices[c].color },
+              onclick: () => setChoice(i, c) }, choices[c].icon)))
+          : (i.choice ? choiceChip(choices, i.choice) : h('span', { class: 'hint' }, '—')));
+    }));
+    if (!shown.length) list.appendChild(h('p', { class: 'hint', style: { padding: '16px 0' } }, 'Nothing here.'));
+  };
+  drawTiles(); drawList();
+
+  const roundSel = project.rounds.length > 1 ? h('select', { name: 'round', style: { width: 'auto' },
+    onchange: e => go(`#/p/${pid}/summary/${e.target.value}`) },
+    project.rounds.map(r => h('option', { value: r.number, selected: r.number === number }, `Round ${r.number}`))) : null;
+
+  const exportUrl = (fmt, choice) => `/api/projects/${pid}/export?format=${fmt}${choice ? `&choice=${choice}` : ''}`;
+  const remaining = project.round.remaining;
+
+  show(
+    h('div', { class: 'row' }, h('h2', { class: 'grow' }, isCurrent ? `Round ${number}` : `Round ${number} (past)`), roundSel),
+    h('p', { class: 'hint', style: { marginBottom: '12px' } }, `${plural(items.length, 'item')} in this round. Tap a pile to filter${isCurrent ? ', tap an icon to change a decision' : ''}.`),
+    tiles,
+    isCurrent && remaining ? h('div', { class: 'actions' },
+      h('button', { class: 'btn primary', onclick: () => go(`#/p/${pid}`) }, `🃏 Keep swiping (${remaining} left)`)) : null,
+    list,
+    h('h3', {}, 'Export'),
+    h('div', { class: 'row' },
+      h('a', { class: 'btn small', href: exportUrl('csv'), download: '' }, '⬇ CSV — everything'),
+      h('a', { class: 'btn small', href: exportUrl('csv', 'right'), download: '' }, `⬇ CSV — only ${choices.right.label}`),
+      h('a', { class: 'btn small', href: exportUrl('json'), download: '' }, '⬇ JSON')),
+    h('p', { class: 'hint', style: { marginTop: '6px' } }, 'Exports include every field, your decision in each round, and the latest verdict.'),
+    isCurrent ? nextRoundPanel(project, counts) : null,
+    isCurrent ? importPanel(project) : null);
+}
+
+function nextRoundPanel(project, counts) {
+  const choices = choicesOf(project);
+  const carry = new Set(['right', 'unsure']);
+  const error = h('div', { class: 'error' });
+  const ta = h('textarea', { name: 'next-text', style: { minHeight: '110px' },
+    placeholder: 'Optional: paste more data. Items that match ones you have get the new fields; new ones join the round.' });
+  const piles = [...['right', 'unsure', 'left'].map(c => [c, `${choices[c].icon} ${choices[c].label} (${counts[c]})`]),
+                 ...(counts.none ? [['none', `Not decided (${counts.none})`]] : [])];
+  const start = async btn => {
+    btn.disabled = true; error.textContent = '';
+    try {
+      await api(`/api/projects/${project.id}/rounds`, { method: 'POST', body: { carry: [...carry], text: ta.value } });
+      go(`#/p/${project.id}`);
+    } catch (e) { error.textContent = e.message; btn.disabled = false; }
+  };
+  return h('div', { class: 'panel' },
+    h('h2', {}, `Start round ${project.round.number + 1}`),
+    h('p', { class: 'hint' }, 'Your decisions so far are kept. Pick which piles go back in the deck:'),
+    h('div', { class: 'seg' }, piles.map(([c, label]) => {
+      const cb = h('input', { type: 'checkbox', name: `carry-${c}`, checked: carry.has(c),
+                              onchange: () => { cb.checked ? carry.add(c) : carry.delete(c); } });
+      return h('label', {}, cb, label);
+    })),
+    ta, error,
+    h('div', { class: 'actions' }, h('button', { class: 'btn primary', 'data-next-round': 1, onclick: e => start(e.currentTarget) }, 'Start next round →')));
+}
+
+function importPanel(project) {
+  const error = h('div', { class: 'error' });
+  const ta = h('textarea', { name: 'import-text', style: { minHeight: '90px' }, placeholder: 'Paste more items or more fields…' });
+  const go_ = async btn => {
+    btn.disabled = true; error.textContent = '';
+    try {
+      const r = await api(`/api/projects/${project.id}/import`, { method: 'POST', body: { text: ta.value } });
+      toast(`${plural(r.added, 'new item')}, ${plural(r.updated, 'item')} updated`);
+      route();
+    } catch (e) { error.textContent = e.message; btn.disabled = false; }
+  };
+  return h('details', { class: 'panel' },
+    h('summary', { style: { cursor: 'pointer', fontWeight: 600 } }, '＋ Add data to this round'),
+    h('p', { class: 'hint', style: { margin: '8px 0' } },
+      `Matched by ${project.key_field ? `“${project.key_field}”` : 'exact content'}. New fields show up in ⚙ Settings → card layout.`),
+    ta, error,
+    h('div', { class: 'actions' }, h('button', { class: 'btn', onclick: e => go_(e.currentTarget) }, 'Add')));
+}
+
+/* ============================================================ settings */
+
+async function viewSettings(pid) {
+  const project = await api(`/api/projects/${pid}`);
+  const sample = (await api(`/api/projects/${pid}/items`)).items.slice(0, 25).map(i => i.data);
+  setHeader(project.name, [
+    h('button', { class: 'iconbtn', title: 'Results', 'aria-label': 'Results', onclick: () => go(`#/p/${pid}/summary`) }, '📊'),
+  ]);
+  const edit = { name: project.name, choices: structuredClone(choicesOf(project)),
+                 mapping: { details: [], ...structuredClone(project.mapping) } };
+  const error = h('div', { class: 'error' });
+  const name = h('input', { name: 'name', value: edit.name, oninput: () => { edit.name = name.value; } });
+  const save = async btn => {
+    btn.disabled = true; error.textContent = '';
+    try {
+      await api(`/api/projects/${pid}`, { method: 'PATCH', body: edit });
+      toast('Saved');
+      go(`#/p/${pid}`);
+    } catch (e) { error.textContent = e.message; btn.disabled = false; }
+  };
+  const del = async () => {
+    if (!confirm(`Delete “${project.name}”? The file is kept on the server as deleted-${pid}-….db in case you change your mind.`)) return;
+    await api(`/api/projects/${pid}`, { method: 'DELETE' });
+    go('#/');
+  };
+  show(
+    h('h2', {}, 'Project settings'),
+    h('label', { class: 'field' }, h('span', {}, 'Name'), name),
+    h('h3', {}, 'Swipe meanings'),
+    choiceEditor(edit.choices),
+    h('h3', {}, 'Card layout'),
+    sample.length ? mappingEditor({ mapping: edit.mapping, fields: project.fields, sample, project: edit })
+                  : h('p', { class: 'hint' }, 'No items in this round to preview.'),
+    error,
+    h('div', { class: 'actions' },
+      h('button', { class: 'btn', onclick: () => history.back() }, 'Cancel'),
+      h('button', { class: 'btn primary', onclick: e => save(e.currentTarget) }, 'Save')),
+    h('h3', {}, 'Danger zone'),
+    h('button', { class: 'btn danger', onclick: del }, '🗑 Delete project'));
+}
+
+/* ============================================================ router */
+
+async function route() {
+  const parts = location.hash.replace(/^#\/?/, '').split('/').filter(Boolean);
+  try {
+    if (parts[0] === 'new') return viewNew();
+    draft = null;
+    // ids come from the URL bar and end up in fetch() paths: only accept
+    // the server's own format, so "#/p/..%2F.." can't aim requests elsewhere
+    if (parts[0] === 'p' && PROJECT_ID.test(parts[1] || '')) {
+      if (parts[2] === 'summary') return await viewSummary(parts[1], parts[3] ? Number(parts[3]) : null);
+      if (parts[2] === 'settings') return await viewSettings(parts[1]);
+      return await viewSwipe(parts[1]);
+    }
+    return await viewHome();
+  } catch (e) {
+    setHeader('');
+    show(h('div', { class: 'empty' },
+      h('div', { class: 'big' }, '😵'), h('p', {}, e.message),
+      h('button', { class: 'btn', style: { marginTop: '14px' }, onclick: () => go('#/') }, 'Home')));
+  }
+}
+
+/* ============================================================ boot */
+
+document.getElementById('home-link').addEventListener('click', () => go('#/'));
+window.addEventListener('hashchange', route);
+route();
+</script>
+</body>
+</html>

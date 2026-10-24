@@ -1,0 +1,2 @@
+# Pinned so the Pi runs exactly what CI tested; Dependabot proposes bumps.
+flask==3.1.3
