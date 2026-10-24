@@ -1,0 +1,24 @@
+[Unit]
+Description=Swipe - turn any list into a swipe deck
+After=network.target
+
+[Service]
+Type=simple
+# change if your Pi username differs
+User=sebas
+WorkingDirectory=/srv/apps/swipe
+Environment=SWIPE_DATA=/srv/apps/swipe/data
+Environment=SWIPE_PORT=8002
+ExecStart=/srv/apps/swipe/venv/bin/python /srv/apps/swipe/app.py
+Restart=on-failure
+RestartSec=5
+
+# hardening (cheap on a Pi, worth having)
+NoNewPrivileges=true
+ProtectSystem=strict
+# whole app dir writable so data/ can be created on first run
+ReadWritePaths=/srv/apps/swipe
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,9 @@
+[Unit]
+Description=Swipe auto-deploy (pull latest from GitHub)
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/srv/apps/swipe/deploy/autodeploy.sh
+Nice=10

@@ -1,0 +1,105 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"   # same as the Pi (Raspberry Pi OS bookworm)
+      - name: Install dependencies
+        run: pip install -r requirements-dev.txt
+      - name: API + parser tests
+        run: python -m pytest tests/ -v
+      - name: Frontend JS syntax check
+        run: |
+          sed -n '/<script>/,/<\/script>/p' static/index.html | sed '1d;$d' > /tmp/app.js
+          node --check /tmp/app.js
+      - name: Frontend unit tests
+        run: node --test tests/frontend.test.js
+      - name: Deploy script syntax check
+        run: bash -n deploy/autodeploy.sh
+
+  # Browser tests: rendering, event wiring and async orchestration — the
+  # things unit tests structurally cannot reach. Separate job so a slow
+  # browser run doesn't hold up the fast feedback from `test`.
+  browser:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install -r requirements.txt
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - run: npm ci
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        id: pw-cache
+        with:
+          path: ~/.cache/ms-playwright
+          key: pw-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+      - name: Install Chromium
+        if: steps.pw-cache.outputs.cache-hit != 'true'
+        run: npx playwright install --with-deps chromium
+      - name: Install Chromium system deps
+        if: steps.pw-cache.outputs.cache-hit == 'true'
+        run: npx playwright install-deps chromium
+      - name: Browser tests
+        run: npx playwright test
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: |
+            test-results/
+            playwright-report/
+          retention-days: 7
+
+  # Failures on main get a persistent, visible alert: one open issue labeled
+  # ci-failure, updated with each failing run instead of spamming new ones.
+  # (PR failures already show as a red X on the PR itself.)
+  alert:
+    needs: [test, browser]
+    if: failure() && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+    steps:
+      - uses: actions/github-script@v7
+        with:
+          script: |
+            const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            const body = [
+              `CI failed on \`main\` at ${context.sha.substring(0, 7)}.`,
+              '',
+              `Run: ${runUrl}`,
+              '',
+              "The Pi's autodeploy health-gate rolls back if the app itself broke, " +
+              'but main stays broken (and every deploy keeps rolling back) until this is fixed.',
+            ].join('\n');
+            const open = await github.rest.issues.listForRepo({
+              owner: context.repo.owner, repo: context.repo.repo,
+              labels: 'ci-failure', state: 'open',
+            });
+            if (open.data.length) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner, repo: context.repo.repo,
+                issue_number: open.data[0].number, body,
+              });
+            } else {
+              await github.rest.issues.create({
+                owner: context.repo.owner, repo: context.repo.repo,
+                title: '🚨 CI failing on main', body, labels: ['ci-failure'],
+              });
+            }
