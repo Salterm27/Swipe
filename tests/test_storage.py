@@ -1,5 +1,6 @@
 """Project files, listing, the static page and the smaller endpoints."""
 
+import json
 import os
 import sqlite3
 
@@ -110,3 +111,23 @@ def test_export_keeps_unicode_and_quotes(client):
     body = client.get(f"/api/projects/{pid}/export").get_data(as_text=True)
     assert body.startswith("﻿")              # BOM so Excel reads UTF-8
     assert '"Café, Paris"' in body and '"He said ""hi""\nthen left"' in body
+
+
+def test_old_default_colours_follow_the_new_theme(client):
+    pid = make(client)["id"]
+    con = sqlite3.connect(os.path.join(swipe.DATA_DIR, f"project-{pid}.db"))
+    old = {"left": {"label": "Nope", "icon": "✕", "color": "#e5484d"},
+           "right": {"label": "Yes", "icon": "✓", "color": "#3ecf8e"},
+           "unsure": {"label": "Hmm", "icon": "?", "color": "#123456"}}   # a colour someone picked
+    with con:
+        con.execute("UPDATE meta SET value = ? WHERE key = 'choices'", (json.dumps(old),))
+    con.close()
+    c = client.get(f"/api/projects/{pid}").get_json()["choices"]
+    assert (c["left"]["color"], c["right"]["color"], c["unsure"]["color"]) == ("#b0604a", "#1f4a35", "#123456")
+    assert c["left"]["label"] == "Nope"
+
+
+def test_item_fields_keep_the_lists_order(client):
+    pid = make(client, text="zeta,alpha,mid\n1,2,3")["id"]
+    item = client.get(f"/api/projects/{pid}/items").get_json()["items"][0]
+    assert list(item["data"]) == ["zeta", "alpha", "mid"]

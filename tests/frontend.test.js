@@ -15,7 +15,7 @@ const path = require('node:path');
 const { JSDOM } = require('jsdom');
 
 const BOOT_MARKER = '/* ============================================================ boot */';
-const EXPORTS = ['splitUrls', 'photoFrame', 'showPhoto', 'stepPhoto', 'renderDetail', 'openDetail',
+const EXPORTS = ['icon', 'choiceGlyph', 'deckArt', 'splitUrls', 'photoFrame', 'showPhoto', 'stepPhoto', 'renderDetail', 'openDetail',
   'closeDetail', 'cardTap', 'h', 'safeUrl', 'cardModel', 'dragChoice', 'dragLean', 'swipeThresholds', 'SWIPE', 'choicesOf', 'plural', 'renderCard',
   'statsBar', 'choiceChip', 'choiceEditor', 'mappingEditor', 'setStamps', 'DEFAULT_CHOICES',
   'PROJECT_ID'];
@@ -328,6 +328,28 @@ describe('photos and details', () => {
     assert.ok(document.querySelector('.sheet'));
     app.closeDetail();
     card.remove();
+  });
+});
+
+describe('icons', () => {
+  test('icon() draws an inline, decorative SVG', () => {
+    const svg = app.icon('check');
+    assert.equal(svg.namespaceURI, 'http://www.w3.org/2000/svg');
+    assert.equal(svg.getAttribute('aria-hidden'), 'true');
+    assert.ok(svg.querySelector('path').getAttribute('d'));
+    assert.ok(app.deckArt().querySelectorAll('rect').length >= 3);
+  });
+
+  test('default decisions get line icons; custom ones show as typed', () => {
+    assert.equal(app.choiceGlyph({ icon: '✓' }).tagName, 'svg');
+    assert.equal(app.choiceGlyph({ icon: '✕' }).tagName, 'svg');
+    assert.equal(app.choiceGlyph({ icon: '?' }).className, 'glyph');
+    assert.equal(app.choiceGlyph({ icon: '❤️' }).textContent, '❤️');
+  });
+
+  test('default colours are the house palette', () => {
+    assert.deepEqual(Object.fromEntries(Object.entries(app.DEFAULT_CHOICES).map(([k, v]) => [k, v.color])),
+      { left: '#b0604a', right: '#1f4a35', unsure: '#a8802a' });
   });
 });
 

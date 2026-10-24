@@ -74,6 +74,23 @@ new cards. You can import from the results page into the current round, or
 into the next round as part of "Start next round". New fields show up in
 ⚙ Settings → card layout.
 
+## Design
+
+Calm and editorial: warm ivory paper, white cards with fine borders and
+barely-there shadows, deep forest-green ink. Decisions use forest (yes),
+dusty terracotta (no) and soft ochre (not sure). Headlines are set in
+**Newsreader**, an editorial serif with real italics; everything else is
+**DM Sans**. Both are self-hosted in `static/fonts/` under the SIL Open
+Font License (`OFL-*.txt` next to them), so the browser never fetches
+anything from outside the Pi. Photos sit contained on white with room
+around them.
+
+All text meets WCAG AA contrast, keyboard focus shows a forest ring, touch
+targets are at least 44px, and `prefers-reduced-motion` turns animations
+off. The design tokens (colours, type, radii, shadows) live at the top of
+the `<style>` block in `static/index.html`. Projects that still use the
+original dark-theme default colours pick up the new palette automatically.
+
 ## Files
 
 ```
@@ -82,6 +99,7 @@ swipe/
 ├── parsers.py             # list-format detection + card-layout guessing
 ├── requirements.txt       # just flask
 ├── static/index.html      # entire frontend, single file
+├── static/fonts/          # Newsreader + DM Sans (OFL), self-hosted
 ├── tests/                 # pytest (API, parsers, validation), jsdom unit tests, Playwright
 ├── pyproject.toml         # ruff + coverage config
 ├── eslint.config.js       # frontend lint (no innerHTML: list data is user content)

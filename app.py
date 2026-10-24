@@ -30,13 +30,24 @@ MAX_UPLOAD = 20 * 1024 * 1024
 
 app = Flask(__name__, static_folder="static", static_url_path="")
 app.config["MAX_CONTENT_LENGTH"] = MAX_UPLOAD
+app.json.sort_keys = False   # keep each item's fields in the list's own order
 
 CHOICES = ("left", "right", "unsure")
 DEFAULT_CHOICES = {
-    "left": {"label": "No", "icon": "✕", "color": "#e5484d"},
-    "right": {"label": "Yes", "icon": "✓", "color": "#3ecf8e"},
-    "unsure": {"label": "Not sure", "icon": "?", "color": "#8b93a7"},
+    "left": {"label": "No", "icon": "✕", "color": "#b0604a"},       # dusty terracotta
+    "right": {"label": "Yes", "icon": "✓", "color": "#1f4a35"},     # forest
+    "unsure": {"label": "Not sure", "icon": "?", "color": "#a8802a"},  # soft ochre
 }
+# The defaults of the original dark theme. Projects that kept them get the
+# current defaults instead, so old projects pick up the new look; a colour
+# someone actually chose is left alone.
+LEGACY_DEFAULT_COLORS = {"#e5484d": "#b0604a", "#3ecf8e": "#1f4a35", "#8b93a7": "#a8802a"}
+
+
+def current_choices(meta):
+    choices = meta.get("choices", DEFAULT_CHOICES)
+    return {c: {**v, "color": LEGACY_DEFAULT_COLORS.get(v.get("color"), v.get("color"))}
+            for c, v in choices.items()}
 
 # Strict on purpose: the backup script writes project-<id>.bak.db snapshots
 # next to the real files, and those must never show up as projects.
@@ -185,7 +196,7 @@ def project_summary(pid, con):
         "id": pid,
         "name": meta.get("name", "Untitled"),
         "created_at": meta.get("created_at"),
-        "choices": meta.get("choices", DEFAULT_CHOICES),
+        "choices": current_choices(meta),
         "mapping": meta.get("mapping", {}),
         "key_field": meta.get("key_field"),
         "fields": meta.get("fields", []),

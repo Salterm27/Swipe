@@ -26,7 +26,7 @@ def test_create_project_writes_its_own_db_file(client):
     assert os.path.exists(os.path.join(swipe.DATA_DIR, f"project-{p['id']}.db"))
     assert p["item_count"] == 3 and p["key_field"] == "id"
     assert p["round"]["number"] == 1 and p["round"]["total"] == 3
-    assert p["choices"]["right"] == {"label": "Yes", "icon": "✓", "color": "#3ecf8e"}
+    assert p["choices"]["right"] == {"label": "Yes", "icon": "✓", "color": "#1f4a35"}
     assert p["mapping"]["title"] == "name"
 
 

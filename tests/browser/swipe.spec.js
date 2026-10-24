@@ -51,10 +51,10 @@ test('deck: buttons, keyboard, undo, then the results page', async ({ page, requ
   await expect(topTitle(page)).toHaveText('Cherry');
   await page.keyboard.press('ArrowRight');
   await page.keyboard.press('ArrowLeft');
-  await expect(page.getByText('Round 1 done')).toBeVisible();
+  await expect(page.getByText('That’s round 1,')).toBeVisible();
   await expect(page.locator('#pcount')).toHaveText('4 / 4');
 
-  await page.getByRole('button', { name: /see results/i }).click();
+  await page.getByRole('button', { name: /see the results/i }).click();
   await expect(page.locator('[data-tile=right] .n')).toHaveText('2');
   await expect(page.locator('[data-tile=unsure] .n')).toHaveText('1');
   await expect(page.locator('[data-tile=left] .n')).toHaveText('1');
@@ -231,4 +231,26 @@ test('wizard: highlight and more-photo pickers drive the preview', async ({ page
   await page.keyboard.press('Escape');
   await page.click('[data-create]');
   await expect(page.locator('.card[data-item] .highlight')).toHaveText('$1');
+});
+
+test('design: fonts are served locally and reduced motion turns animation off', async ({ page, request, browser }) => {
+  for (const f of ['newsreader-latin-400-normal', 'newsreader-latin-400-italic', 'dm-sans-latin-500-normal']) {
+    const r = await request.get(`/fonts/${f}.woff2`);
+    expect(r.status()).toBe(200);
+  }
+  const external = [];
+  page.on('request', r => { if (!r.url().startsWith('http://127.0.0.1')) external.push(r.url()); });
+  await page.goto('/');
+  await page.evaluate(() => document.fonts.ready);
+  expect(await page.evaluate(() => document.fonts.check('16px "DM Sans"') && document.fonts.check('italic 30px Newsreader'))).toBe(true);
+  expect(external).toEqual([]);                                   // nothing leaves the Pi
+
+  const ctx = await browser.newContext({ reducedMotion: 'reduce', baseURL: page.url() });
+  const calm = await ctx.newPage();
+  const pid = await createViaApi(request, 'Calm', 'One\nTwo');
+  await calm.goto(`/#/p/${pid}`);
+  await calm.locator('.card[data-item] [data-info]').click();
+  const dur = await calm.locator('.sheet').evaluate(e => getComputedStyle(e).animationDuration);
+  expect(parseFloat(dur)).toBeLessThan(0.01);
+  await ctx.close();
 });
